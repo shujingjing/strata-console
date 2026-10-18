@@ -20,6 +20,7 @@ New-Item -ItemType Directory -Path $stage -Force | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $root "strata-console.exe") -Destination $stage
 Copy-Item -LiteralPath (Join-Path $root "ui") -Destination $stage -Recurse
+Copy-Item -LiteralPath (Join-Path $root "docs") -Destination $stage -Recurse
 foreach ($name in @("auto_config_helper.py", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "start-daemon.bat", "stop-console.bat")) {
   $p = Join-Path $root $name
   if (Test-Path $p) { Copy-Item -LiteralPath $p -Destination $stage }
