@@ -109,6 +109,8 @@ Strata 的启动参数很多，手动改 JSON、找日志、查显存状态容�
 
 Temperature、Top P、Top K、Seed、默认思考强度写入运行配置，作为**外部调用未指定时的默认值**。如果客户端在请求中显式指定这些参数，以请求值为准。
 
+`Max Tokens` 是客户端未指定输出上限时的默认值；`Fit Max Tokens` 开启后，如果 prompt + max_tokens 超出上下文，会自动缩短输出而不是拒绝请求。
+
 ### KV 缓存
 
 支持：
@@ -141,7 +143,7 @@ fp16 | int8 | q4_0 | k8v4
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build.ps1
-powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.0
+powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.1
 ```
 
 构建脚本通过 `vswhere` 查找 Visual Studio，也支持 `STRATA_VCVARS` 指定 `vcvars64.bat`。运行时包会生成在 `dist/`。
@@ -167,3 +169,5 @@ MIT License，见 [LICENSE](LICENSE)。
 第三方组件与字体许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 Strata Console 是 Strata 的第三方配套工具，不是 Strata 官方项目。
+
+

@@ -111,6 +111,8 @@
           <div class="field"><span class="label">Top P<span class="tip" data-tip="核采样阈值，范围 0–1。留空使用模型卡默认。">?</span></span><input type="number" id="topP" min="0" max="1" step="0.01" placeholder="模型默认"></div>
           <div class="field"><span class="label">Top K<span class="tip" data-tip="每步保留的候选数，范围 1–64。留空使用模型卡默认。">?</span></span><input type="number" id="topK" min="1" max="64" step="1" placeholder="模型默认"></div>
           <div class="field"><span class="label">Seed<span class="tip" data-tip="正整数，用于可复现采样；留空表示随机。">?</span></span><input type="number" id="seed" min="1" step="1" placeholder="留空（随机）"></div>
+          <div class="field"><span class="label">Max Tokens<span class="tip" data-tip="默认输出上限，写入 Strata Chat 的 shared settings，仅对未指定 max_tokens 的客户端生效；请求显式发送 max_tokens 时以请求为准。留空表示不设默认。">?</span></span><input type="number" id="maxTokens" min="1" step="1" placeholder="留空=不设默认"></div>
+          <div class="switch-line" style="padding-top:2px"><div class="copy"><strong>Fit Max Tokens</strong><small>prompt + max_tokens 超出上下文时自动缩短输出，而不是返回 400；推荐开启，重启后生效</small></div><button class="st-toggle" id="fitMaxTokens" aria-checked="false" aria-label="Fit Max Tokens"></button></div>
           <div class="hint">这些是运行配置的默认值；外部调用在请求中指定 temperature / top_p / top_k / seed / reasoning_effort 时，以请求值为准。</div>
         </div>
 
@@ -270,4 +272,5 @@
 <div class="modal-backdrop" id="modalBackdrop" hidden><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><span class="card-title" id="modalTitle">对话框</span><button class="st-btn st-btn--icon" id="modalClose" aria-label="关闭">×</button></div><div class="modal-body" id="modalBody"></div><div class="modal-foot" id="modalFoot"></div></div></div>
 </body>
 </html>
+
 

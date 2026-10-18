@@ -1,4 +1,4 @@
-# 发布说明
+﻿# 发布说明
 
 本文件给发布者和新会话使用。目标：把 `Strata Console` 源码上传到 GitHub，并发布 Windows 可执行包。
 
@@ -23,13 +23,13 @@
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build.ps1
-powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.0
+powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.1
 ```
 
 产物：
 
 ```text
-dist\strata-console-v0.1.0-win64.zip
+dist\strata-console-v0.1.1-win64.zip
 ```
 
 包内包含：
@@ -69,7 +69,7 @@ git init
 git branch -M main
 git add .
 git status --short
-git commit -m "Initial release: Strata Console 0.1.0"
+git commit -m "Initial release: Strata Console 0.1.1"
 ```
 
 创建远程仓库并推送（把 `<owner>`、`<repo>` 换成确认后的值）：
@@ -83,10 +83,10 @@ gh repo create <owner>/<repo> --public --source=. --remote=origin --push
 ## 5. 创建 Release
 
 ```powershell
-git tag v0.1.0
-git push origin v0.1.0
-gh release create v0.1.0 .\dist\strata-console-v0.1.0-win64.zip `
-  --title "Strata Console v0.1.0" `
+git tag v0.1.1
+git push origin v0.1.1
+gh release create v0.1.1 .\dist\strata-console-v0.1.1-win64.zip `
+  --title "Strata Console v0.1.1" `
   --notes-file RELEASE_NOTES.md
 ```
 
@@ -103,13 +103,13 @@ gh release create v0.1.0 .\dist\strata-console-v0.1.0-win64.zip `
 
 ```powershell
 gh repo view <owner>/<repo> --web
-gh release view v0.1.0 --web
+gh release view v0.1.1 --web
 ```
 
 确认：
 
 - 仓库中没有 `design-notes/`、`strata-console.json`、`strata-console.exe`、`build/`、`dist/`；
-- Release 页面有 `strata-console-v0.1.0-win64.zip`；
+- Release 页面有 `strata-console-v0.1.1-win64.zip`；
 - 下载 zip 后解压，双击 `strata-console.exe` 能打开控制台；
 - 没有把 API Key、control_token 或本机路径提交到仓库。
 
@@ -120,3 +120,4 @@ gh release view v0.1.0 --web
 Invoke-RestMethod http://127.0.0.1:8090/api/health
 .\strata-console.exe --stop
 ```
+

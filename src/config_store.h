@@ -53,6 +53,9 @@ private:
     json configs_locked() const;
     json backups_locked() const;
     std::string backup_dir_locked() const;
+    std::string shared_path_locked() const;
+    json read_shared_locked() const;
+    bool save_shared_locked(const json& shared, std::string& err);
     bool create_backup_locked(std::string& err);
     void prune_backups_locked();
     bool save_config_locked(std::string& err);

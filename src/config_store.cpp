@@ -426,6 +426,11 @@ json ConfigStore::view_locked() const {
         j["top_k"] = s.contains("top_k") ? s["top_k"] : json();
         j["seed"] = s.contains("seed") ? s["seed"] : json();
     }
+    {
+        auto shared = read_shared_locked();
+        j["max_tokens"] = shared.contains("max_tokens") ? shared["max_tokens"] : json(0);
+    }
+    j["fit_max_tokens"] = bval(cfg_, "fit_max_tokens", false);
 
     auto args = cfg_.value("args", json::array());
     j["native"] = arg_value(args, "--native").value_or("");
@@ -512,6 +517,31 @@ bool ConfigStore::select_config(const std::string& path, std::string& err) {
     std::string save_err;
     if (!save_launcher_locked(save_err)) { err = save_err; return false; }
     return true;
+}
+
+std::string ConfigStore::shared_path_locked() const {
+    if (config_path_.empty()) return {};
+    return parent_of(config_path_) + "\\" + stem_of(config_path_) + ".shared-settings.json";
+}
+
+json ConfigStore::read_shared_locked() const {
+    std::string p = shared_path_locked();
+    if (p.empty() || !util::is_file(p)) return json::object();
+    std::string err;
+    auto j = util::read_json(p, err);
+    if (!j || !j->is_object()) return json::object();
+    return *j;
+}
+
+bool ConfigStore::save_shared_locked(const json& shared, std::string& err) {
+    std::string p = shared_path_locked();
+    if (p.empty()) return true;
+    if (!shared.is_object() || shared.empty()) {
+        std::error_code ec;
+        fs::remove(util::path(p), ec);
+        return true;
+    }
+    return util::write_json_atomic(p, shared, err);
 }
 
 std::string ConfigStore::backup_dir_locked() const {
@@ -859,6 +889,30 @@ bool ConfigStore::apply(const json& form, std::string& err) {
         if (!apply_number("seed", 1, 9.0e18, true)) return false;
         if (sampling.empty()) cfg_.erase("sampling");
         else cfg_["sampling"] = sampling;
+    }
+
+    if (form.contains("fit_max_tokens")) {
+        set_bool_or_erase(cfg_, "fit_max_tokens", flag("fit_max_tokens", false));
+    }
+
+    if (form.contains("max_tokens")) {
+        std::string text;
+        if (form["max_tokens"].is_string()) text = util::trim(form["max_tokens"].get<std::string>());
+        else if (form["max_tokens"].is_number()) text = std::to_string((long long)form["max_tokens"].get<double>());
+        json shared = read_shared_locked();
+        if (text.empty()) {
+            shared.erase("max_tokens");
+        } else {
+            try {
+                long long n = std::stoll(text);
+                if (n <= 0 || n > 1000000) { err = "Max Tokens 必须是 1-1000000 的整数"; return false; }
+                shared["max_tokens"] = (int)n;
+            } catch (...) {
+                err = "Max Tokens 必须是正整数";
+                return false;
+            }
+        }
+        if (!save_shared_locked(shared, err)) return false;
     }
 
     if (form.contains("auto_restart")) launcher_["auto_restart"] = flag("auto_restart", false);

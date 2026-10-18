@@ -178,6 +178,8 @@ function buildForm() {
     top_p: value("topP"),
     top_k: value("topK"),
     seed: value("seed"),
+    max_tokens: value("maxTokens"),
+    fit_max_tokens: isOn("fitMaxTokens"),
     low_ram: value("lowRam"),
     gpu: value("gpu"),
     spec: value("spec"),
@@ -261,6 +263,8 @@ function fillConfig(payload) {
   setField("topP", v.top_p ?? "");
   setField("topK", v.top_k ?? "");
   setField("seed", v.seed ?? "");
+  setField("maxTokens", v.max_tokens || "");
+  setToggle("fitMaxTokens", v.fit_max_tokens);
   setField("startMode", v.start_mode || "preload");
   setField("backupCount", v.backup_count || 5);
   setField("host", v.host || "127.0.0.1");
@@ -978,6 +982,7 @@ function bindEvents() {
     if (!on) setToggle("lazyRestart", true);
   });
   bindToggle("lazyRestart");
+  bindToggle("fitMaxTokens");
   bindToggle("openBrowser");
   bindToggle("preventSleep");
   bindToggle("apiMonitor", (on) => {

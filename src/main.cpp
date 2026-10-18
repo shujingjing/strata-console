@@ -1,4 +1,4 @@
-#include <atomic>
+﻿#include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
@@ -15,7 +15,7 @@
 
 namespace {
 
-constexpr const char* kVersion = "0.1.0";
+constexpr const char* kVersion = "0.1.1";
 
 struct App {
     std::string app_dir;
@@ -520,3 +520,4 @@ int main(int argc, char** argv) {
     WSACleanup();
     return 0;
 }
+
