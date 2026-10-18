@@ -1,0 +1,273 @@
+﻿<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strata Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2310b981'/%3E%3Cpath d='M9 21c2.5 2 5.5 3 9 3 4 0 6-1.5 6-4 0-2.5-2-3.5-6-4.3-3.5-.7-5-1.5-5-3.2 0-1.6 1.6-2.5 4-2.5 2.2 0 4 .7 5.5 2' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css?v=3">
+<script src="app.js?v=3" defer></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-activity" viewBox="0 0 24 24"><polyline points="3 12 7 12 10 4 14 20 17 12 21 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="7 9 10 12 7 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="17" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.4" fill="currentColor"/><circle cx="4" cy="12" r="1.4" fill="currentColor"/><circle cx="4" cy="18" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 9h8M8 12h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="st-header">
+  <span class="st-header__brand">Strata <em>Console</em></span>
+  <span class="st-pill" id="statusPill" data-state="stopped"><span class="st-pill__dot"></span><span id="statusText">未启动</span><span class="muted" id="statusSub">127.0.0.1:8080</span></span>
+  <span class="st-pill" data-state="idle" title="控制台端口"><span class="st-pill__dot"></span>控制台 <span id="consolePort">:8090</span></span>
+  <span class="st-header__spacer"></span>
+  <div class="header-actions">
+    <button class="st-btn st-btn--secondary st-btn--sm" id="loadBtn"><svg class="st-icon st-icon--sm"><use href="#i-play"/></svg>加载</button>
+    <button class="st-btn st-btn--secondary st-btn--sm" id="unloadBtn"><svg class="st-icon st-icon--sm"><use href="#i-stop"/></svg>卸载</button>
+    <button class="st-btn st-btn--secondary st-btn--sm" id="restartBtn"><svg class="st-icon st-icon--sm"><use href="#i-refresh"/></svg>重启</button>
+    <button class="st-btn st-btn--danger st-btn--sm" id="stopBtn">停止</button>
+    <button class="st-btn st-btn--primary st-btn--sm" id="openWebBtn"><svg class="st-icon st-icon--sm"><use href="#i-chat"/></svg>打开 Chat</button>
+    <button class="st-btn st-btn--secondary st-btn--sm" id="quitConsoleBtn" title="退出控制台后台服务，不是关闭浏览器页面">退出控制台</button>
+    <button class="st-btn st-btn--icon" id="themeBtn" title="浅色 / 深色" aria-label="切换主题"><svg class="st-icon"><use id="themeIcon" href="#i-moon"/></svg></button>
+  </div>
+</header>
+
+<main class="console-main">
+  <aside class="settings-panel">
+    <div class="settings-head">
+      <span class="card-title">配置</span>
+      <div class="row">
+        <span class="badge ok" id="saveState">已保存</span>
+        <button class="st-btn st-btn--icon" id="configRefresh" title="刷新配置"><svg class="st-icon st-icon--sm"><use href="#i-refresh"/></svg></button>
+      </div>
+    </div>
+        <div class="settings-tabs" id="settingsTabs" role="tablist" aria-label="配置分类">
+      <button class="settings-tab active" data-panel="basic" role="tab" aria-selected="true">基本</button>
+      <button class="settings-tab" data-panel="infer" role="tab" aria-selected="false">推理</button>
+      <button class="settings-tab" data-panel="network" role="tab" aria-selected="false">网络</button>
+      <button class="settings-tab" data-panel="manage" role="tab" aria-selected="false">配置管理</button>
+    </div>
+    <div class="settings-scroll" id="settingsScroll">
+      <div class="settings-page active" id="page-basic">
+        <div class="section">
+          <div class="section-title"><span>配置档</span><span class="badge plain" id="backupBadge">5 个备份</span></div>
+          <div class="field">
+            <span class="label">运行配置<span class="tip" data-tip="Strata 启动时读取的 JSON。切换配置档会同步下方全部参数。">?</span></span>
+            <div class="control-row"><select id="configSelect"></select><button class="btn-icon" id="openConfigBtn" title="打开配置文件">…</button></div>
+          </div>
+          <div class="field"><span class="label">模型名<span class="tip" data-tip="写入 API 的 model 名称，客户端可以用它或别名调用。">?</span></span><input type="text" id="modelName"></div>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>模型位置</span><span class="badge warn" id="pathState">自动读取</span></div>
+          <div class="field top">
+            <span class="label">GGUF 首分片<span class="tip" data-tip="对应 --native。选择目录时会自动寻找 *-00001-of-*.gguf 或单个 .gguf。修改路径会提示兼容性风险。">?</span></span>
+            <div><div class="control-row"><input type="text" id="ggufPath"><button class="btn-icon" id="browseNative" title="浏览">…</button></div><div class="hint" id="nativeHint">从当前配置自动读取</div></div>
+          </div>
+          <div class="field"><span class="label">Pack 目录<span class="tip" data-tip="对应 --pack。必须与 GGUF 来自同一模型；更换模型请使用 setup 生成新 Pack。">?</span></span><div class="control-row"><input type="text" id="packPath"><button class="btn-icon" id="browsePack" title="浏览">…</button></div></div>
+          <button class="adv-toggle" data-target="advPaths"><span>高级路径：PLE / Tokenizer / 引擎 / 日志</span><span class="chev"><svg class="st-icon st-icon--sm"><use href="#i-chevron"/></svg></span></button>
+          <div class="adv-body" id="advPaths">
+            <div class="field"><span class="label">PLE GGUF</span><input type="text" id="plePath"></div>
+            <div class="field"><span class="label">Tokenizer</span><input type="text" id="tokenizerPath"></div>
+            <div class="field"><span class="label">引擎 exe</span><input type="text" id="exePath"></div>
+            <div class="field"><span class="label">Expert profile</span><input type="text" id="profilePath"></div>
+            <div class="field"><span class="label">引擎日志</span><input type="text" id="logPath"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>启动选项</span></div>
+          <div class="switch-line"><div class="copy"><strong>中断后自动重启</strong><small>启动器监督服务；默认开启，可手动关闭</small></div><button class="st-toggle" id="autoRestart" aria-checked="true" aria-label="中断后自动重启"></button></div>
+          <div class="switch-line"><div class="copy"><strong>重启后不预加载模型</strong><small>仅自动重启时附加 --lazy，首个请求再加载</small></div><button class="st-toggle" id="lazyRestart" aria-checked="true" aria-label="重启后不预加载模型"></button></div>
+          <div class="switch-line"><div class="copy"><strong>启动模式</strong><small>普通启动默认预加载；可切换为延迟加载</small></div><select id="startMode" style="width:132px"><option value="preload">预加载</option><option value="lazy">延迟加载</option></select></div>
+          <div class="switch-line"><div class="copy"><strong>就绪后打开 Chat</strong><small>默认关闭；也可随时点右上角“打开 Chat”</small></div><button class="st-toggle" id="openBrowser" aria-checked="false" aria-label="就绪后打开 Chat"></button></div>
+          <div class="switch-line"><div class="copy"><strong>保持系统唤醒</strong><small>运行期间阻止系统休眠，远程服务建议开启</small></div><button class="st-toggle" id="preventSleep" aria-checked="false" aria-label="保持系统唤醒"></button></div>
+          <div class="switch-line"><div class="copy"><strong>请求内容监视</strong><small>api_monitor：保留最近 100 条请求内容，会增加服务器内存</small></div><button class="st-toggle" id="apiMonitor" aria-checked="false" aria-label="请求内容监视"></button></div>
+        </div>
+      </div>
+
+      <div class="settings-page" id="page-infer">
+        <div class="section">
+          <div class="section-title"><span>推理</span><span class="badge info" id="contextHint">当前配置</span></div>
+          <div class="field"><span class="label">上下文长度<span class="tip" data-tip="模型一次能看到的 token 数。越长越占显存，GPU 能缓存的专家越少。">?</span></span><div class="control-row"><input type="number" id="contextInput" min="1024" step="1024"><select id="contextPreset" style="width:100px"><option value="">预设</option><option>32768</option><option>65536</option><option>131072</option><option>200704</option><option>262144</option></select></div></div>
+          <div class="hint" id="contextNote">当前配置已读取</div>
+          <div class="field"><span class="label">KV 缓存<span class="tip" data-tip="对话记忆的存储精度。仅支持 fp16 / int8 / q4_0 / k8v4；Q5_1 是专家权重格式，不是 KV 选项。int8 是官方默认。">?</span></span><select id="kvSelect"><option value="int8">int8（官方默认）</option><option value="k8v4">k8v4（K 8-bit + V 4-bit）</option><option value="q4_0">q4_0（最省显存）</option><option value="fp16">fp16（最高精度）</option></select></div>
+          <div class="hint">已实测：q5_0 / q5_1 / q8_0 会被引擎拒绝</div>
+          <div class="field top"><span class="label">图片输入<span class="tip" data-tip="保留开关。当前缺少视觉编码器时不可用；安装后可启用。CPU 编码器省显存但较慢，GPU 更快但占用显存。">?</span></span><div><label class="checkline"><input type="checkbox" id="visionCheck"> 启用图片输入</label><div class="hint" id="visionNote">检测视觉组件…</div></div></div>
+          <div class="field"><span class="label">图片运行位置<span class="tip" data-tip="CPU：不占显存，每张图可能慢几秒；GPU：更快，但会占用约 1 GB 以上显存。">?</span></span><select id="visionDevice"><option value="cpu">CPU（省显存）</option><option value="gpu">GPU（更快）</option></select><div class="hint" id="visionDeviceHint">CPU 编码不占显存；改用 GPU 需要重新编译 CUDA 版编码器。</div></div>
+          <div class="field"><span class="label">空闲卸载<span class="tip" data-tip="空闲多少分钟后释放模型和显存。0 表示不卸载；下一次请求会重新加载。">?</span></span><div class="control-row"><input type="number" id="idleUnload" min="0" step="1"><span class="muted small">分钟</span></div></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title"><span>采样与思考</span><span class="badge plain">外部未指定时生效</span></div>
+          <div class="field"><span class="label">默认思考强度<span class="tip" data-tip="对应 reasoning_effort。none 最快，low/medium 保留部分思考，high 为模型默认；留空不覆盖。">?</span></span><select id="reasoningEffort"><option value="">模型默认</option><option value="none">none</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select></div>
+          <div class="field"><span class="label">Temperature<span class="tip" data-tip="0 = 贪心；数值越高越发散。范围 0–2。留空使用模型卡默认。">?</span></span><input type="number" id="temperature" min="0" max="2" step="0.05" placeholder="模型默认"></div>
+          <div class="field"><span class="label">Top P<span class="tip" data-tip="核采样阈值，范围 0–1。留空使用模型卡默认。">?</span></span><input type="number" id="topP" min="0" max="1" step="0.01" placeholder="模型默认"></div>
+          <div class="field"><span class="label">Top K<span class="tip" data-tip="每步保留的候选数，范围 1–64。留空使用模型卡默认。">?</span></span><input type="number" id="topK" min="1" max="64" step="1" placeholder="模型默认"></div>
+          <div class="field"><span class="label">Seed<span class="tip" data-tip="正整数，用于可复现采样；留空表示随机。">?</span></span><input type="number" id="seed" min="1" step="1" placeholder="留空（随机）"></div>
+          <div class="hint">这些是运行配置的默认值；外部调用在请求中指定 temperature / top_p / top_k / seed / reasoning_effort 时，以请求值为准。</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title"><span>高级性能</span></div>
+          <button class="adv-toggle" data-target="advPerf"><span>低内存 / GPU / 投机 / Prefill / Expert Cache</span><span class="chev"><svg class="st-icon st-icon--sm"><use href="#i-chevron"/></svg></span></button>
+          <div class="adv-body" id="advPerf">
+            <div class="field"><span class="label">低内存模式<span class="tip" data-tip="mmap：专家从 SSD 读取；resident：专家复制到 RAM。RAM 不足时 mmap 更稳。">?</span></span><select id="lowRam"><option value="off">关闭</option><option value="mmap">mmap</option><option value="resident">resident</option></select></div>
+            <div class="field"><span class="label">GPU</span><input type="text" id="gpu" placeholder="0 或 0,2"></div>
+            <div class="field"><span class="label">投机窗口<span class="tip" data-tip="对应 --spec，MTP 推测窗口，常用 4；越大不一定越快。">?</span></span><input type="text" id="spec" placeholder="4"></div>
+            <div class="field"><span class="label">投机阈值<span class="tip" data-tip="对应 --spec-min-p，推测接受阈值，常用 0.5。">?</span></span><input type="text" id="specMinP" placeholder="0.5"></div>
+            <div class="field"><span class="label">Prefill 分块<span class="tip" data-tip="对应 --prefill，单位 tokens。auto 由引擎决定；固定值如 2048/4096/8192 可调预填速度与临时显存。">?</span></span><input type="text" id="prefill" placeholder="auto"></div>
+            <div class="field"><span class="label">Expert Cache<span class="tip" data-tip="对应 --expert-cache，显存中驻留的专家数量（slots/blobs）。auto 会按剩余显存自动调整；固定值不会自动缩小。">?</span></span><input type="text" id="expertCache" placeholder="auto"></div>
+            <div class="field"><span class="label">KV 驻留<span class="tip" data-tip="对应 --kv-resident，KV 流式驻留窗口，单位 tokens；留空关闭。">?</span></span><input type="text" id="kvResident" placeholder="关闭"></div>
+            <div class="field"><span class="label">VRAM 保留<span class="tip" data-tip="对应 --vram-reserve-mib，为桌面/其他程序保留的显存 MiB；默认 1024，0 表示不额外保留。">?</span></span><input type="number" id="vramReserve" min="0"><span class="hint">默认 1024 MiB，降低显存不足导致的崩溃风险</span></div>
+            <div class="field"><span class="label">视觉 exe</span><input type="text" id="visionExe" placeholder="strata-vision.exe"></div>
+            <div class="field"><span class="label">视觉 mmproj</span><input type="text" id="visionMmproj" placeholder="mmproj-*.gguf"></div>
+            <div class="field"><span class="label">视觉最大 tokens<span class="tip" data-tip="每张图片最多编码成多少 token。越大细节越多，CPU 编码越慢；默认 768。">?</span></span><input type="number" id="visionMaxTokens" min="64" max="4096" step="64"></div>
+            <div class="field"><span class="label">视觉线程数<span class="tip" data-tip="CPU 编码器使用的线程数。默认 8；CPU 核心/线程较多时可提高。">?</span></span><input type="number" id="visionThreads" min="1" max="128" step="1"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-page" id="page-network">
+        <div class="section">
+          <div class="section-title"><span>连接信息</span><span class="badge plain">OpenAI / Anthropic</span></div>
+          <div class="endpoint-item"><div class="endpoint-head"><span class="label">API Base<span class="tip" data-tip="OpenAI 兼容客户端填这个地址。">?</span></span><button class="st-btn st-btn--secondary st-btn--sm" id="copyApiBtn">复制</button></div><input type="text" id="apiBase" class="endpoint-input" readonly></div>
+          <div class="endpoint-item"><div class="endpoint-head"><span class="label">Chat 端点</span><button class="st-btn st-btn--secondary st-btn--sm" id="copyChatBtn">复制</button></div><input type="text" id="chatEndpoint" class="endpoint-input" readonly></div>
+          <div class="endpoint-item"><div class="endpoint-head"><span class="label">Anthropic 端点</span><button class="st-btn st-btn--secondary st-btn--sm" id="copyAnthropicBtn">复制</button></div><input type="text" id="anthropicEndpoint" class="endpoint-input" readonly></div>
+          <div class="endpoint-item"><div class="endpoint-head"><span class="label">模型名</span><button class="st-btn st-btn--secondary st-btn--sm" id="copyModelBtn">复制</button></div><input type="text" id="connectionModel" class="endpoint-input" readonly></div>
+          <div class="hint">OpenAI 兼容客户端填 API Base；Anthropic 兼容客户端使用 Messages 端点。</div>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>模型 API</span><span class="badge off" id="lanBadge">仅本机</span></div>
+          <div class="switch-line"><div class="copy"><strong>允许局域网访问</strong><small>默认关闭；开启后强制要求 API Key。公网控制台配置将在后续版本提供。</small></div><button class="st-toggle" id="lanToggle" aria-checked="false" aria-label="允许局域网访问"></button></div>
+          <div class="field"><span class="label">监听地址<span class="tip" data-tip="模型 API 的监听地址。远程客户端访问时请设置 API Key。">?</span></span><select id="host"><option>127.0.0.1</option><option>0.0.0.0</option></select></div>
+          <div class="field"><span class="label">端口</span><input type="number" id="port" min="1" max="65535"></div>
+          <div class="field"><span class="label">API Key<span class="tip" data-tip="模型客户端的密钥，独立于控制台。留空表示保持现有密钥；本机使用允许重复复制。">?</span></span><div><div class="control-row"><input type="password" id="apiKey" autocomplete="new-password"></div><div class="control-row" style="margin-top:6px"><button class="st-btn st-btn--secondary st-btn--sm" id="genKey">生成 sk-strata-*</button><button class="st-btn st-btn--secondary st-btn--sm" id="copyKeyBtn">复制</button><button class="st-btn st-btn--secondary st-btn--sm" id="clearKey">清除</button></div><div class="hint" id="keyState">未设置</div></div></div>
+        </div>
+        <div class="lan-extra" id="lanExtra">
+          <div class="section">
+            <div class="section-title"><span>局域网</span></div>
+            <div class="field"><span class="label">局域网地址</span><span class="muted small" id="lanUrl">—</span></div>
+            <div class="hint warn">Windows 防火墙可能拦截；首次启动时请允许 Python 的专用网络访问</div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>跨域 / 反向代理</span><span class="badge plain">始终可用</span></div>
+          <div class="hint" style="margin-bottom:8px">即使只监听本机，反向代理或隧道也可能需要这些设置；留空即关闭 CORS。</div>
+          <div class="field"><span class="label">CORS 来源<span class="tip" data-tip="允许哪些网页直接调用 /v1/*。留空=关闭；* 允许任意网页。即使未开启局域网也可以设置。">?</span></span><input type="text" id="corsOrigins" placeholder="留空=关闭 CORS"></div>
+          <div class="field"><span class="label">受信任来源<span class="tip" data-tip="反向代理或隧道地址，让 Strata 自己的页面和设置接口接受该来源。">?</span></span><input type="text" id="trustedOrigins" placeholder="https://strata.example.com"></div>
+          <div class="field"><span class="label">允许的主机名<span class="tip" data-tip="DNS 重绑定保护。反向代理使用其他域名时加入这里。">?</span></span><input type="text" id="allowedHosts" placeholder="strata.example.com"></div>
+          <div class="hint" id="corsHint">CORS 当前关闭。填写来源后保存并重启生效。</div>
+        </div>
+      </div>
+
+      <div class="settings-page" id="page-manage">
+        <div class="section">
+          <div class="section-title"><span>当前配置</span><span class="badge plain">只读</span></div>
+          <div class="hint" id="manageSummary">—</div>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>备份</span></div>
+          <div class="field"><span class="label">备份数量<span class="tip" data-tip="每次保存前生成带时间戳的备份，默认保留 5 个，可设置 1–50。">?</span></span><input type="number" id="backupCount" min="1" max="50"></div>
+          <div class="button-grid"><button class="st-btn st-btn--secondary st-btn--sm" id="openBackupDirBtn">打开备份目录</button><button class="st-btn st-btn--secondary st-btn--sm" id="backupsBtn">备份管理</button></div>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>自动配置</span></div>
+          <div class="hint" style="margin-bottom:8px">读取硬件与 Strata 官方推荐；只调整上下文等运行参数，不会更换模型或修改路径。</div>
+          <button class="st-btn st-btn--primary" id="autoConfigBtn">检测硬件并推荐</button>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>维护</span><span class="badge plain">只读</span></div>
+          <div class="button-grid"><button class="st-btn st-btn--secondary st-btn--sm" id="commandBtn">查看启动命令</button><button class="st-btn st-btn--secondary st-btn--sm" id="openConfigBtn2">打开配置</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-foot">
+      <button class="st-btn st-btn--secondary" id="saveBtn">保存配置</button>
+      <button class="st-btn st-btn--primary" id="startBtn">启动</button>
+    </div>
+  </aside>
+
+  <section class="workspace">
+    <div class="workspace-head">
+      <div class="workspace-title"><h1>运行监控</h1><p id="workspaceSub">等待连接…</p></div>
+      <div class="workspace-actions"><span class="badge ok" id="liveBadge">实时</span><button class="st-btn st-btn--secondary st-btn--sm" id="reloadBtn"><svg class="st-icon st-icon--sm"><use href="#i-refresh"/></svg>重载配置</button></div>
+    </div>
+    <div class="workspace-tabs-wrap"><div class="st-tabs" role="tablist">
+      <button class="st-tab" role="tab" aria-selected="true" data-tab="monitor"><svg class="st-icon st-icon--sm"><use href="#i-activity"/></svg>监控</button>
+      <button class="st-tab" role="tab" aria-selected="false" data-tab="console"><svg class="st-icon st-icon--sm"><use href="#i-terminal"/></svg>命令行<span class="count">live</span></button>
+      <button class="st-tab" role="tab" aria-selected="false" data-tab="requests"><svg class="st-icon st-icon--sm"><use href="#i-list"/></svg>请求<span class="count" id="reqCount">0</span></button>
+    </div></div>
+
+    <div class="panels">
+      <div class="panel active" id="panel-monitor">
+        <div class="summary">
+          <div class="st-card"><div class="muted small">服务</div><div class="value" id="serviceState">未启动</div><div class="sub" id="serviceSub">—</div></div>
+          <div class="st-card"><div class="muted small">模型</div><div class="value" id="modelState">—</div><div class="sub" id="modelSub">—</div></div>
+          <div class="st-card"><div class="muted small">上下文</div><div class="value" id="ctxValue">—</div><div class="st-progress" style="margin-top:8px"><div class="st-progress__bar" id="ctxBar" style="width:0%"></div></div><div class="sub" id="ctxSub">—</div></div>
+        </div>
+        <div class="st-card live">
+          <div class="live-top"><span class="badge" id="liveState">空闲</span><strong id="liveTokens">—</strong><span class="muted small" id="liveElapsed"></span><span class="live-speed" id="liveSpeed">—</span></div>
+          <div class="st-progress"><div class="st-progress__bar" id="liveBar" style="width:0%"></div></div>
+          <div class="live-meta" id="liveMeta"><span>等待请求</span></div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="name">GPU 使用率</div><div class="value" id="mGpu">—</div><div class="sub" id="mGpuSub">—</div><div class="bar"><i id="mGpuBar" style="width:0%"></i></div></div>
+          <div class="metric"><div class="name">VRAM</div><div class="value" id="mVram">—</div><div class="sub" id="mVramSub">—</div><div class="bar"><i id="mVramBar" style="width:0%"></i></div></div>
+          <div class="metric"><div class="name">GPU 温度</div><div class="value" id="mTemp">—</div><div class="sub" id="mTempSub">—</div><div class="bar"><i id="mTempBar" style="width:0%"></i></div></div>
+          <div class="metric"><div class="name">功耗</div><div class="value" id="mPower">—</div><div class="sub" id="mPowerSub">—</div><div class="bar"><i id="mPowerBar" style="width:0%"></i></div></div>
+          <div class="metric"><div class="name">CPU</div><div class="value" id="mCpu">—</div><div class="sub" id="mCpuSub">—</div><div class="bar"><i id="mCpuBar" style="width:0%"></i></div></div>
+          <div class="metric"><div class="name">内存</div><div class="value" id="mRam">—</div><div class="sub" id="mRamSub">—</div><div class="bar"><i id="mRamBar" style="width:0%"></i></div></div>
+          <div class="metric"><div class="name">磁盘读取</div><div class="value" id="mDisk">—</div><div class="sub" id="mDiskSub">—</div><div class="bar"><i id="mDiskBar" style="width:0%"></i></div></div>
+          <div class="metric"><div class="name">PCIe</div><div class="value" id="mPcie">—</div><div class="sub" id="mPcieSub">—</div><div class="bar"><i id="mPcieBar" style="width:0%"></i></div></div>
+        </div>
+        <div class="monitor-row">
+          <div class="st-card ctx-card">
+            <div class="req-head"><span class="card-title">上下文</span><span class="muted small" id="gaugeSub">—</span></div>
+            <div class="ctx-gauge"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--st-surface-2)" stroke-width="10" stroke-linecap="round" stroke-dasharray="235.6 314.2" transform="rotate(135 60 60)"/><circle id="ctxGauge" cx="60" cy="60" r="50" fill="none" stroke="var(--st-accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 314.2" transform="rotate(135 60 60)"/></svg><div class="ctx-gauge__label"><span class="ctx-gauge__pct" id="ctxPct">0%</span><span>已用</span></div></div>
+            <div class="bar-row"><span>显存中的专家</span><span class="muted" id="expertsText">—</span></div><div class="st-progress"><div class="st-progress__bar" id="expertsBar" style="width:0%"></div></div>
+            <div class="bar-row"><span>系统 RAM</span><span class="muted" id="ramText">—</span></div><div class="st-progress"><div class="st-progress__bar" id="ramBar" style="width:0%"></div></div>
+            <div class="bar-row"><span>GPU 温度</span><span class="muted" id="tempText">—</span></div><div class="st-progress" data-tone="warn"><div class="st-progress__bar" id="tempBar" style="width:0%"></div></div>
+          </div>
+          <div class="st-card req-card">
+            <div class="req-head"><span class="card-title">最近请求</span><span class="muted small" id="reqSummary">—</span></div>
+            <div class="table-wrap"><table class="st-table"><thead><tr><th>时间</th><th>状态</th><th class="num">Prompt</th><th class="num">复用</th><th class="num">输出</th><th class="num">预填 t/s</th><th class="num">解码 t/s</th><th class="num">命中</th><th class="num">耗时</th></tr></thead><tbody id="reqBody"><tr><td colspan="9" class="muted">暂无请求</td></tr></tbody></table></div>
+            <div class="footer-note"><span id="reqTotals"></span><span id="stateUpdated"></span></div>
+          </div>
+        </div>
+        <div class="panel-title"><h3>运行日志</h3><span>最近 6 行 · 完整日志见“命令行”</span></div>
+        <div class="logbox" id="logPreview">等待启动…</div>
+      </div>
+
+      <div class="panel" id="panel-console">
+        <div class="console-toolbar"><button class="st-btn st-btn--secondary st-btn--sm" id="pauseLog">暂停滚动</button><button class="st-btn st-btn--secondary st-btn--sm" id="clearLog">清空视图</button><button class="st-btn st-btn--secondary st-btn--sm" id="openLogBtn">打开日志文件</button><span class="spacer"></span><span class="badge ok" id="logFollow">实时跟随</span><span class="badge plain">stdout + engine log</span></div>
+        <div class="st-code"><div class="st-code__head"><span id="logPathLabel">strata / server + engine</span><span id="apiMonitorLabel">api_monitor 关闭</span></div><pre id="consoleOutput">等待启动…</pre></div>
+        <div class="footer-note"><span>命令行视图只读取日志，不增加 Strata 内存占用。</span><span id="logUpdated"></span></div>
+      </div>
+
+      <div class="panel" id="panel-requests">
+        <div class="notice info"><strong>请求详情是可选功能。</strong> 控制台 v1 只显示 /metrics 元数据。启用 <span class="mono">api_monitor</span> 后，可在官方 /api-monitor 页面查看最近 100 条请求的提示词和回答；会增加服务器内存占用。</div>
+        <div class="requests-layout">
+          <div><div class="req-head" style="margin-bottom:8px"><span class="card-title">请求列表</span><span class="muted small" id="reqTabSummary">—</span></div><div class="table-wrap"><table class="st-table"><thead><tr><th>时间</th><th>端点</th><th>状态</th><th class="num">Prompt</th><th class="num">输出</th><th class="num">耗时</th></tr></thead><tbody id="reqTabBody"><tr><td colspan="6" class="muted">暂无请求</td></tr></tbody></table></div></div>
+          <div class="detail" id="requestDetail"><div class="empty"><b>选择一条请求</b><br><br>默认只有元数据。<br>启用 api_monitor 后可查看输入、输出与推理内容。</div></div>
+        </div>
+        <div class="req-head" style="margin-top:14px"><span class="card-title">api_monitor</span><span class="badge plain" id="apiMonitorState">默认关闭</span></div>
+        <div class="switch-line" style="padding-top:4px"><div class="copy"><strong>保留最近 100 条请求内容</strong><small>写入运行配置的 api_monitor；会增加服务器内存占用，重启后生效。</small></div><button class="st-toggle" id="apiMonitorToggle" aria-checked="false" aria-label="启用 api_monitor"></button></div>
+        <div class="control-row" style="margin-top:6px"><button class="st-btn st-btn--secondary st-btn--sm" id="openOfficialMonitor">打开官方请求监视</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toasts" id="toasts"></div>
+<div class="modal-backdrop" id="modalBackdrop" hidden><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><span class="card-title" id="modalTitle">对话框</span><button class="st-btn st-btn--icon" id="modalClose" aria-label="关闭">×</button></div><div class="modal-body" id="modalBody"></div><div class="modal-foot" id="modalFoot"></div></div></div>
+</body>
+</html>
+
