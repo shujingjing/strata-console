@@ -1,4 +1,4 @@
-@font-face{font-family:"Outfit";src:url("fonts/outfit-latin-wght.woff2") format("woff2-variations");font-weight:100 900;font-display:swap}
+﻿@font-face{font-family:"Outfit";src:url("fonts/outfit-latin-wght.woff2") format("woff2-variations");font-weight:100 900;font-display:swap}
 @font-face{font-family:"Outfit";src:url("fonts/outfit-latin-ext-wght.woff2") format("woff2-variations");font-weight:100 900;font-display:swap}
 :root{
   --st-font:"Outfit","Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
@@ -181,7 +181,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--st-accent);margin
 .hint.warn{color:var(--st-warn-text)}.hint.danger{color:var(--st-danger-text)}.hint.ok{color:var(--st-accent-text)}
 .adv-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;border:0;background:transparent;color:var(--st-ink-muted);font-size:var(--st-fs-sm);padding:4px 0;margin-top:4px}
 .adv-toggle:hover{color:var(--st-ink)}.adv-toggle .chev{transition:transform .16s;display:flex;align-items:center}.adv-toggle.open .chev{transform:rotate(180deg)}
-.adv-body{display:none;padding-top:4px}.adv-body.open{display:block}
+.adv-body{display:none;padding-top:4px}.adv-body.open{display:block}.optional-body{display:none}.optional-body.open{display:block}
 .switch-line{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:8px 0}
 .switch-line .copy{min-width:0}.switch-line strong{display:block;font-size:var(--st-fs-sm);font-weight:600;color:var(--st-ink-soft)}
 .switch-line small{display:block;color:var(--st-ink-muted);font-size:var(--st-fs-xs);margin-top:1px;line-height:1.4}
@@ -208,3 +208,4 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--st-accent);margin
 .diff{width:100%;border-collapse:collapse;font-size:var(--st-fs-sm)}.diff th,.diff td{padding:8px;border-bottom:1px solid var(--st-line-soft);text-align:left}.diff th{color:var(--st-ink-muted);font-weight:500;font-size:var(--st-fs-xs)}
 @media (max-width:1180px){.settings-panel{width:380px;flex-basis:380px}.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.monitor-row{grid-template-columns:1fr}.summary{grid-template-columns:1fr 1fr}}
 @media (max-width:900px){.console-main{flex-direction:column;overflow:auto;height:auto}.settings-panel{width:auto;flex:0 0 auto;max-height:none}.workspace{min-height:640px}.st-header{height:auto;padding:10px 14px;flex-wrap:wrap}.header-actions{margin-left:0}.st-pill{display:none}.summary{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+

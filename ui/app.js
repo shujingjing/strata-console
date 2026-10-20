@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 const $ = (id) => document.getElementById(id);
 const state = {
@@ -182,6 +182,8 @@ function buildForm() {
     fit_max_tokens: isOn("fitMaxTokens"),
     low_ram: value("lowRam"),
     gpu: value("gpu"),
+    mtp: isOn("mtpEnabled"),
+    mtp_path: value("mtpPath"),
     spec: value("spec"),
     spec_min_p: value("specMinP"),
     prefill: value("prefill"),
@@ -246,6 +248,10 @@ function fillConfig(payload) {
   setField("idleUnload", v.idle_unload_min ?? 60);
   setField("lowRam", v.low_ram || "off");
   setField("gpu", v.gpu || "");
+  setToggle("mtpEnabled", v.mtp);
+  setField("mtpPath", v.mtp_kind === "count" ? (v.mtp_value || "") : (v.mtp_path || v.mtp_detected_path || ""));
+  $("mtpPath").disabled = !v.mtp;
+  updateMtpHint();
   setField("spec", v.spec || "");
   setField("specMinP", v.spec_min_p || "");
   setField("prefill", v.prefill || "");
@@ -307,6 +313,7 @@ function fillConfig(payload) {
   $("visionMaxTokens").disabled = !$("visionCheck").checked;
   $("visionThreads").disabled = !$("visionCheck").checked;
   updateVisionHint();
+  updateOptionalVisibility();
 
   $("backupBadge").textContent = `${v.backup_count || 5} 个备份`;
   setText("manageSummary", `${v.config_name || "未选择配置"}${v.model_name ? ` · ${v.model_name}` : ""}${v.context ? ` · ${Math.round(v.context / 1024)}K` : ""}${v.kv ? ` · KV ${v.kv}` : ""}`);
@@ -360,6 +367,49 @@ function updateVisionNote() {
   }
 }
 
+function updateOptionalVisibility() {
+  const mtp = $("mtpOptions");
+  if (mtp) mtp.classList.toggle("open", isOn("mtpEnabled"));
+  const vision = $("visionOptions");
+  if (vision) vision.classList.toggle("open", !!$("visionCheck")?.checked);
+}
+
+function updateMtpHint() {
+  const el = $("mtpHint");
+  if (!el) return;
+  const on = isOn("mtpEnabled");
+  const path = value("mtpPath");
+  const v = state.payload?.view || {};
+  if (!on) {
+    if (v.mtp_available && v.mtp_detected_path) {
+      el.textContent = `检测到 MTP runtime：${v.mtp_detected_path}；打开后保存并重启生效`;
+      el.className = "hint ok";
+    } else {
+      el.textContent = "MTP 未启用";
+      el.className = "hint";
+    }
+    return;
+  }
+  if (/^\d+$/.test(path)) {
+    el.textContent = `MTP 草稿数 = ${path}（Qwen3.6 等 own-path 模型）`;
+    el.className = "hint ok";
+    return;
+  }
+  if (!path) {
+    el.textContent = "请填写 MTP runtime 目录（需包含 experts.bin）";
+    el.className = "hint warn";
+    return;
+  }
+  const known = path === v.mtp_path || path === v.mtp_detected_path;
+  if (known && !v.mtp_available) {
+    el.textContent = "目录已配置，但缺少 experts.bin；请等 MTP 安装完成后再启用";
+    el.className = "hint warn";
+  } else {
+    el.textContent = `保存后使用：${path}`;
+    el.className = "hint ok";
+  }
+}
+
 function updateVisionHint(showToast = false) {
   const el = $("visionDeviceHint");
   if (!el) return;
@@ -406,7 +456,6 @@ function updateApiBase() {
     apiBase: base,
     chatEndpoint: `${root}/v1/chat/completions`,
     anthropicEndpoint: `${root}/v1/messages`,
-    connectionModel: value("modelName") || state.payload?.view?.model_name || "",
   };
   for (const [id, text] of Object.entries(fields)) {
     const el = $(id);
@@ -536,6 +585,7 @@ function render(s) {
   renderRequests(m.requests || [], m.totals || null);
   renderLogPreview(st.last_log || "");
   updateVisionHint();
+  updateMtpHint();
   updateButtons();
 }
 
@@ -983,6 +1033,13 @@ function bindEvents() {
   });
   bindToggle("lazyRestart");
   bindToggle("fitMaxTokens");
+  bindToggle("mtpEnabled", (on) => {
+    $("mtpPath").disabled = !on;
+    if (on && !value("mtpPath")) setField("mtpPath", state.payload?.view?.mtp_detected_path || "");
+    updateMtpHint();
+    updateOptionalVisibility();
+  });
+  $("mtpPath").addEventListener("input", updateMtpHint);
   bindToggle("openBrowser");
   bindToggle("preventSleep");
   bindToggle("apiMonitor", (on) => {
@@ -1002,6 +1059,7 @@ function bindEvents() {
     $("visionThreads").disabled = !$("visionCheck").checked;
     updateVisionNote();
     updateVisionHint();
+    updateOptionalVisibility();
     markDirty();
   });
   $("visionDevice").addEventListener("change", () => { updateVisionNote(); updateVisionHint(true); });
@@ -1064,10 +1122,14 @@ function bindEvents() {
   });
   $("browseNative").addEventListener("click", () => browse("file", "ggufPath", "选择 GGUF 首分片"));
   $("browsePack").addEventListener("click", () => browse("folder", "packPath", "选择 Pack 目录"));
+  $("browseMtp").addEventListener("click", async () => {
+    await browse("folder", "mtpPath", "选择 MTP runtime 目录");
+    updateMtpHint();
+  });
   $("copyApiBtn").addEventListener("click", copyApi);
   $("copyChatBtn").addEventListener("click", () => copyField("chatEndpoint", "Chat 端点"));
   $("copyAnthropicBtn").addEventListener("click", () => copyField("anthropicEndpoint", "Anthropic 端点"));
-  $("copyModelBtn").addEventListener("click", () => copyField("connectionModel", "模型名"));
+  $("copyModelBtn").addEventListener("click", () => copyField("modelName", "模型名"));
   $("modelName").addEventListener("input", updateApiBase);
   $("port").addEventListener("input", updateApiBase);
   $("host").addEventListener("change", () => {
@@ -1130,3 +1192,4 @@ async function boot() {
 }
 
 document.addEventListener("DOMContentLoaded", boot);
+

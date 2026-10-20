@@ -443,6 +443,21 @@ json ConfigStore::view_locked() const {
     };
     j["context"] = arg_int("--max-context", 0);
     j["kv"] = arg_value(args, "--kv").value_or("int8");
+    {
+        std::string mtp_value = arg_value(args, "--mtp").value_or("");
+        bool mtp_count = !mtp_value.empty() &&
+                         std::all_of(mtp_value.begin(), mtp_value.end(),
+                                     [](unsigned char c) { return std::isdigit(c) != 0; });
+        std::string detected = detect_mtp_path_locked();
+        std::string check_path = (!mtp_value.empty() && !mtp_count) ? mtp_value : detected;
+        j["mtp"] = !mtp_value.empty();
+        j["mtp_value"] = mtp_value;
+        j["mtp_kind"] = mtp_value.empty() ? "" : (mtp_count ? "count" : "path");
+        j["mtp_path"] = mtp_count ? "" : mtp_value;
+        j["mtp_detected_path"] = detected;
+        j["mtp_available"] = mtp_count ||
+            (!check_path.empty() && util::is_file(check_path + "\\experts.bin"));
+    }
     j["spec"] = arg_value(args, "--spec").value_or("");
     j["spec_min_p"] = arg_value(args, "--spec-min-p").value_or("");
     j["prefill"] = arg_value(args, "--prefill").value_or("");
@@ -522,6 +537,29 @@ bool ConfigStore::select_config(const std::string& path, std::string& err) {
 std::string ConfigStore::shared_path_locked() const {
     if (config_path_.empty()) return {};
     return parent_of(config_path_) + "\\" + stem_of(config_path_) + ".shared-settings.json";
+}
+
+std::string ConfigStore::detect_mtp_path_locked() const {
+    std::vector<std::string> candidates;
+    std::string appdata = util::get_env_utf8(L"APPDATA");
+    if (!appdata.empty()) {
+        std::string err;
+        auto settings = util::read_json(appdata + "\\Strata\\settings.json", err);
+        if (settings && settings->is_object()) {
+            std::string data_dir = sval(*settings, "data_dir");
+            if (!data_dir.empty()) candidates.push_back(data_dir + "\\mtp\\rt");
+        }
+    }
+    if (!root_.empty()) {
+        candidates.push_back(util::u8(util::path(root_).parent_path() / L"Strata-data" / L"mtp" / L"rt"));
+        candidates.push_back(root_ + "\\Strata-data\\mtp\\rt");
+        candidates.push_back(root_ + "\\..\\Strata-data\\mtp\\rt");
+    }
+    for (const auto& p : candidates) {
+        if (util::is_file(p + "\\experts.bin")) return util::u8(fs::weakly_canonical(util::path(p)));
+    }
+    for (const auto& p : candidates) if (util::is_dir(p)) return util::u8(fs::weakly_canonical(util::path(p)));
+    return candidates.empty() ? "" : candidates.front();
 }
 
 json ConfigStore::read_shared_locked() const {
@@ -730,6 +768,32 @@ bool ConfigStore::apply(const json& form, std::string& err) {
         std::string v = str("low_ram");
         if (v == "mmap") set_flag(args, "--mmap-experts", true);
         else if (v == "resident") set_flag(args, "--resident-experts", true);
+    }
+
+    if (form.contains("mtp")) {
+        bool on = flag("mtp", false);
+        if (!on) {
+            remove_arg(args, "--mtp");
+        } else {
+            std::string v = util::trim(str("mtp_path"));
+            if (v.empty()) v = util::trim(arg_value(args, "--mtp").value_or(""));
+            if (v.empty()) v = detect_mtp_path_locked();
+            bool numeric = !v.empty() && std::all_of(v.begin(), v.end(),
+                [](unsigned char c) { return std::isdigit(c) != 0; });
+            if (numeric) {
+                int n = 0;
+                try { n = std::stoi(v); } catch (...) { n = 0; }
+                if (n < 1 || n > 64) { err = "MTP 草稿数必须是 1-64 的整数"; return false; }
+                set_arg(args, "--mtp", std::to_string(n));
+            } else {
+                if (v.empty()) { err = "未找到 MTP runtime，请填写路径"; return false; }
+                if (!util::is_file(v + "\\experts.bin")) {
+                    err = "MTP runtime 缺少 experts.bin: " + v;
+                    return false;
+                }
+                set_arg(args, "--mtp", v);
+            }
+        }
     }
 
     auto set_optional = [&](const char* key, const char* flag_name) {

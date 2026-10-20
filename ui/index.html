@@ -58,14 +58,6 @@
     <div class="settings-scroll" id="settingsScroll">
       <div class="settings-page active" id="page-basic">
         <div class="section">
-          <div class="section-title"><span>配置档</span><span class="badge plain" id="backupBadge">5 个备份</span></div>
-          <div class="field">
-            <span class="label">运行配置<span class="tip" data-tip="Strata 启动时读取的 JSON。切换配置档会同步下方全部参数。">?</span></span>
-            <div class="control-row"><select id="configSelect"></select><button class="btn-icon" id="openConfigBtn" title="打开配置文件">…</button></div>
-          </div>
-          <div class="field"><span class="label">模型名<span class="tip" data-tip="写入 API 的 model 名称，客户端可以用它或别名调用。">?</span></span><input type="text" id="modelName"></div>
-        </div>
-        <div class="section">
           <div class="section-title"><span>模型位置</span><span class="badge warn" id="pathState">自动读取</span></div>
           <div class="field top">
             <span class="label">GGUF 首分片<span class="tip" data-tip="对应 --native。选择目录时会自动寻找 *-00001-of-*.gguf 或单个 .gguf。修改路径会提示兼容性风险。">?</span></span>
@@ -86,6 +78,7 @@
           <div class="switch-line"><div class="copy"><strong>中断后自动重启</strong><small>启动器监督服务；默认开启，可手动关闭</small></div><button class="st-toggle" id="autoRestart" aria-checked="true" aria-label="中断后自动重启"></button></div>
           <div class="switch-line"><div class="copy"><strong>重启后不预加载模型</strong><small>仅自动重启时附加 --lazy，首个请求再加载</small></div><button class="st-toggle" id="lazyRestart" aria-checked="true" aria-label="重启后不预加载模型"></button></div>
           <div class="switch-line"><div class="copy"><strong>启动模式</strong><small>普通启动默认预加载；可切换为延迟加载</small></div><select id="startMode" style="width:132px"><option value="preload">预加载</option><option value="lazy">延迟加载</option></select></div>
+          <div class="field"><span class="label">空闲卸载<span class="tip" data-tip="空闲多少分钟后释放模型和显存。0 表示不卸载；下一次请求会重新加载。">?</span></span><div class="control-row"><input type="number" id="idleUnload" min="0" step="1"><span class="muted small">分钟</span></div></div>
           <div class="switch-line"><div class="copy"><strong>就绪后打开 Chat</strong><small>默认关闭；也可随时点右上角“打开 Chat”</small></div><button class="st-toggle" id="openBrowser" aria-checked="false" aria-label="就绪后打开 Chat"></button></div>
           <div class="switch-line"><div class="copy"><strong>保持系统唤醒</strong><small>运行期间阻止系统休眠，远程服务建议开启</small></div><button class="st-toggle" id="preventSleep" aria-checked="false" aria-label="保持系统唤醒"></button></div>
           <div class="switch-line"><div class="copy"><strong>请求内容监视</strong><small>api_monitor：保留最近 100 条请求内容，会增加服务器内存</small></div><button class="st-toggle" id="apiMonitor" aria-checked="false" aria-label="请求内容监视"></button></div>
@@ -94,14 +87,43 @@
 
       <div class="settings-page" id="page-infer">
         <div class="section">
-          <div class="section-title"><span>推理</span><span class="badge info" id="contextHint">当前配置</span></div>
+          <div class="section-title"><span>上下文与KV</span><span class="badge info" id="contextHint">当前配置</span></div>
           <div class="field"><span class="label">上下文长度<span class="tip" data-tip="模型一次能看到的 token 数。越长越占显存，GPU 能缓存的专家越少。">?</span></span><div class="control-row"><input type="number" id="contextInput" min="1024" step="1024"><select id="contextPreset" style="width:100px"><option value="">预设</option><option>32768</option><option>65536</option><option>131072</option><option>200704</option><option>262144</option></select></div></div>
           <div class="hint" id="contextNote">当前配置已读取</div>
-          <div class="field"><span class="label">KV 缓存<span class="tip" data-tip="对话记忆的存储精度。仅支持 fp16 / int8 / q4_0 / k8v4；Q5_1 是专家权重格式，不是 KV 选项。int8 是官方默认。">?</span></span><select id="kvSelect"><option value="int8">int8（官方默认）</option><option value="k8v4">k8v4（K 8-bit + V 4-bit）</option><option value="q4_0">q4_0（最省显存）</option><option value="fp16">fp16（最高精度）</option></select></div>
+          <div class="field"><span class="label">KV Cache量化<span class="tip" data-tip="对话记忆的存储精度。仅支持 fp16 / int8 / q4_0 / k8v4；Q5_1 是专家权重格式，不是 KV 选项。int8 是官方默认。">?</span></span><select id="kvSelect"><option value="int8">int8（官方默认）</option><option value="k8v4">k8v4（K 8-bit + V 4-bit）</option><option value="q4_0">q4_0（最省显存）</option><option value="fp16">fp16（最高精度）</option></select></div>
           <div class="hint">已实测：q5_0 / q5_1 / q8_0 会被引擎拒绝</div>
-          <div class="field top"><span class="label">图片输入<span class="tip" data-tip="保留开关。当前缺少视觉编码器时不可用；安装后可启用。CPU 编码器省显存但较慢，GPU 更快但占用显存。">?</span></span><div><label class="checkline"><input type="checkbox" id="visionCheck"> 启用图片输入</label><div class="hint" id="visionNote">检测视觉组件…</div></div></div>
-          <div class="field"><span class="label">图片运行位置<span class="tip" data-tip="CPU：不占显存，每张图可能慢几秒；GPU：更快，但会占用约 1 GB 以上显存。">?</span></span><select id="visionDevice"><option value="cpu">CPU（省显存）</option><option value="gpu">GPU（更快）</option></select><div class="hint" id="visionDeviceHint">CPU 编码不占显存；改用 GPU 需要重新编译 CUDA 版编码器。</div></div>
-          <div class="field"><span class="label">空闲卸载<span class="tip" data-tip="空闲多少分钟后释放模型和显存。0 表示不卸载；下一次请求会重新加载。">?</span></span><div class="control-row"><input type="number" id="idleUnload" min="0" step="1"><span class="muted small">分钟</span></div></div>
+          <div class="field"><span class="label">KV 驻留<span class="tip" data-tip="对应 --kv-resident，KV 流式驻留窗口，单位 tokens；留空关闭。">?</span></span><input type="text" id="kvResident" placeholder="关闭"></div>
+          <div class="field"><span class="label">Prefill 分块<span class="tip" data-tip="对应 --prefill，单位 tokens。auto 由引擎决定；固定值如 2048/4096/8192 可调预填速度与临时显存。">?</span></span><input type="text" id="prefill" placeholder="auto"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title"><span>推测解码</span><span class="badge plain">可选</span></div>
+          <div class="switch-line"><div class="copy"><strong>MTP 推测解码</strong><small>使用模型自带的 MTP 草稿层；关闭可释放约 0.7–1 GiB 显存</small></div><button class="st-toggle" id="mtpEnabled" aria-checked="false" aria-label="启用 MTP 推测解码"></button></div>
+          <div class="optional-body" id="mtpOptions">
+            <div class="field"><span class="label">MTP 路径/数量<span class="tip" data-tip="路径模式填写 mtp 的 runtime 目录（需包含 experts.bin），例如 ...\\mtp\\rt；Qwen3.6 等自带 MTP 的模型也可以填草稿数，如 2。">?</span></span><div class="control-row"><input type="text" id="mtpPath" placeholder="...\\mtp\\rt 或 2"><button class="iconbtn" id="browseMtp" title="选择 MTP runtime 目录">…</button></div><div class="hint" id="mtpHint">MTP 未启用</div></div>
+            <div class="field"><span class="label">投机窗口<span class="tip" data-tip="对应 --spec，MTP 推测窗口，常用 4；越大不一定越快。">?</span></span><input type="text" id="spec" placeholder="4"></div>
+            <div class="field"><span class="label">投机阈值<span class="tip" data-tip="对应 --spec-min-p，推测接受阈值，常用 0.5。">?</span></span><input type="text" id="specMinP" placeholder="0.5"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title"><span>图片输入</span><span class="badge plain">可选</span></div>
+          <div class="field top"><span class="label">启用图片<span class="tip" data-tip="保留开关。当前缺少视觉编码器时不可用；安装后可启用。CPU 编码器省显存但较慢，GPU 更快但占用显存。">?</span></span><div><label class="checkline"><input type="checkbox" id="visionCheck"> 启用图片输入</label><div class="hint" id="visionNote">检测视觉组件…</div></div></div>
+          <div class="optional-body" id="visionOptions">
+            <div class="field"><span class="label">图片运行位置<span class="tip" data-tip="CPU：不占显存，每张图可能慢几秒；GPU：更快，但会占用约 1 GB 以上显存。">?</span></span><select id="visionDevice"><option value="cpu">CPU（省显存）</option><option value="gpu">GPU（更快）</option></select><div class="hint" id="visionDeviceHint">CPU 编码不占显存；改用 GPU 需要重新编译 CUDA 版编码器。</div></div>
+            <div class="field"><span class="label">视觉 exe</span><input type="text" id="visionExe" placeholder="strata-vision.exe"></div>
+            <div class="field"><span class="label">视觉 mmproj</span><input type="text" id="visionMmproj" placeholder="mmproj-*.gguf"></div>
+            <div class="field"><span class="label">视觉最大 tokens<span class="tip" data-tip="每张图片最多编码成多少 token。越大细节越多，CPU 编码越慢；默认 768。">?</span></span><input type="number" id="visionMaxTokens" min="64" max="4096" step="64"></div>
+            <div class="field"><span class="label">视觉线程数<span class="tip" data-tip="CPU 编码器使用的线程数。默认 8；CPU 核心/线程较多时可提高。">?</span></span><input type="number" id="visionThreads" min="1" max="128" step="1"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title"><span>显存与内存</span></div>
+          <div class="field"><span class="label">GPU</span><input type="text" id="gpu" placeholder="0 或 0,2"></div>
+          <div class="field"><span class="label">低内存模式<span class="tip" data-tip="mmap：专家从 SSD 读取；resident：专家复制到 RAM。RAM 不足时 mmap 更稳。">?</span></span><select id="lowRam"><option value="off">关闭</option><option value="mmap">mmap</option><option value="resident">resident</option></select></div>
+          <div class="field"><span class="label">VRAM 保留<span class="tip" data-tip="对应 --vram-reserve-mib，为桌面/其他程序保留的显存 MiB；默认 1024，0 表示不额外保留。">?</span></span><input type="number" id="vramReserve" min="0"><span class="hint">默认 1024 MiB，降低显存不足导致的崩溃风险</span></div>
+          <div class="field"><span class="label">Expert Cache<span class="tip" data-tip="对应 --expert-cache，显存中驻留的专家数量（slots/blobs）。auto 会按剩余显存自动调整；固定值不会自动缩小。">?</span></span><input type="text" id="expertCache" placeholder="auto"></div>
         </div>
 
         <div class="section">
@@ -115,41 +137,22 @@
           <div class="switch-line" style="padding-top:2px"><div class="copy"><strong>Fit Max Tokens</strong><small>prompt + max_tokens 超出上下文时自动缩短输出，而不是返回 400；推荐开启，重启后生效</small></div><button class="st-toggle" id="fitMaxTokens" aria-checked="false" aria-label="Fit Max Tokens"></button></div>
           <div class="hint">这些是运行配置的默认值；外部调用在请求中指定 temperature / top_p / top_k / seed / reasoning_effort 时，以请求值为准。</div>
         </div>
-
-        <div class="section">
-          <div class="section-title"><span>高级性能</span></div>
-          <button class="adv-toggle" data-target="advPerf"><span>低内存 / GPU / 投机 / Prefill / Expert Cache</span><span class="chev"><svg class="st-icon st-icon--sm"><use href="#i-chevron"/></svg></span></button>
-          <div class="adv-body" id="advPerf">
-            <div class="field"><span class="label">低内存模式<span class="tip" data-tip="mmap：专家从 SSD 读取；resident：专家复制到 RAM。RAM 不足时 mmap 更稳。">?</span></span><select id="lowRam"><option value="off">关闭</option><option value="mmap">mmap</option><option value="resident">resident</option></select></div>
-            <div class="field"><span class="label">GPU</span><input type="text" id="gpu" placeholder="0 或 0,2"></div>
-            <div class="field"><span class="label">投机窗口<span class="tip" data-tip="对应 --spec，MTP 推测窗口，常用 4；越大不一定越快。">?</span></span><input type="text" id="spec" placeholder="4"></div>
-            <div class="field"><span class="label">投机阈值<span class="tip" data-tip="对应 --spec-min-p，推测接受阈值，常用 0.5。">?</span></span><input type="text" id="specMinP" placeholder="0.5"></div>
-            <div class="field"><span class="label">Prefill 分块<span class="tip" data-tip="对应 --prefill，单位 tokens。auto 由引擎决定；固定值如 2048/4096/8192 可调预填速度与临时显存。">?</span></span><input type="text" id="prefill" placeholder="auto"></div>
-            <div class="field"><span class="label">Expert Cache<span class="tip" data-tip="对应 --expert-cache，显存中驻留的专家数量（slots/blobs）。auto 会按剩余显存自动调整；固定值不会自动缩小。">?</span></span><input type="text" id="expertCache" placeholder="auto"></div>
-            <div class="field"><span class="label">KV 驻留<span class="tip" data-tip="对应 --kv-resident，KV 流式驻留窗口，单位 tokens；留空关闭。">?</span></span><input type="text" id="kvResident" placeholder="关闭"></div>
-            <div class="field"><span class="label">VRAM 保留<span class="tip" data-tip="对应 --vram-reserve-mib，为桌面/其他程序保留的显存 MiB；默认 1024，0 表示不额外保留。">?</span></span><input type="number" id="vramReserve" min="0"><span class="hint">默认 1024 MiB，降低显存不足导致的崩溃风险</span></div>
-            <div class="field"><span class="label">视觉 exe</span><input type="text" id="visionExe" placeholder="strata-vision.exe"></div>
-            <div class="field"><span class="label">视觉 mmproj</span><input type="text" id="visionMmproj" placeholder="mmproj-*.gguf"></div>
-            <div class="field"><span class="label">视觉最大 tokens<span class="tip" data-tip="每张图片最多编码成多少 token。越大细节越多，CPU 编码越慢；默认 768。">?</span></span><input type="number" id="visionMaxTokens" min="64" max="4096" step="64"></div>
-            <div class="field"><span class="label">视觉线程数<span class="tip" data-tip="CPU 编码器使用的线程数。默认 8；CPU 核心/线程较多时可提高。">?</span></span><input type="number" id="visionThreads" min="1" max="128" step="1"></div>
-          </div>
-        </div>
       </div>
 
       <div class="settings-page" id="page-network">
         <div class="section">
           <div class="section-title"><span>连接信息</span><span class="badge plain">OpenAI / Anthropic</span></div>
-          <div class="endpoint-item"><div class="endpoint-head"><span class="label">API Base<span class="tip" data-tip="OpenAI 兼容客户端填这个地址。">?</span></span><button class="st-btn st-btn--secondary st-btn--sm" id="copyApiBtn">复制</button></div><input type="text" id="apiBase" class="endpoint-input" readonly></div>
-          <div class="endpoint-item"><div class="endpoint-head"><span class="label">Chat 端点</span><button class="st-btn st-btn--secondary st-btn--sm" id="copyChatBtn">复制</button></div><input type="text" id="chatEndpoint" class="endpoint-input" readonly></div>
+          <div class="endpoint-item"><div class="endpoint-head"><span class="label">OpenAI 兼容端点<span class="tip" data-tip="OpenAI 兼容客户端填这个地址。">?</span></span><button class="st-btn st-btn--secondary st-btn--sm" id="copyApiBtn">复制</button></div><input type="text" id="apiBase" class="endpoint-input" readonly></div>
+          <div class="endpoint-item"><div class="endpoint-head"><span class="label">OpenAI Chat 端点</span><button class="st-btn st-btn--secondary st-btn--sm" id="copyChatBtn">复制</button></div><input type="text" id="chatEndpoint" class="endpoint-input" readonly></div>
           <div class="endpoint-item"><div class="endpoint-head"><span class="label">Anthropic 端点</span><button class="st-btn st-btn--secondary st-btn--sm" id="copyAnthropicBtn">复制</button></div><input type="text" id="anthropicEndpoint" class="endpoint-input" readonly></div>
-          <div class="endpoint-item"><div class="endpoint-head"><span class="label">模型名</span><button class="st-btn st-btn--secondary st-btn--sm" id="copyModelBtn">复制</button></div><input type="text" id="connectionModel" class="endpoint-input" readonly></div>
-          <div class="hint">OpenAI 兼容客户端填 API Base；Anthropic 兼容客户端使用 Messages 端点。</div>
+          <div class="hint">OpenAI 兼容客户端填 OpenAI 兼容端点；Anthropic 兼容客户端使用 Messages 端点。</div>
         </div>
         <div class="section">
           <div class="section-title"><span>模型 API</span><span class="badge off" id="lanBadge">仅本机</span></div>
           <div class="switch-line"><div class="copy"><strong>允许局域网访问</strong><small>默认关闭；开启后强制要求 API Key。公网控制台配置将在后续版本提供。</small></div><button class="st-toggle" id="lanToggle" aria-checked="false" aria-label="允许局域网访问"></button></div>
           <div class="field"><span class="label">监听地址<span class="tip" data-tip="模型 API 的监听地址。远程客户端访问时请设置 API Key。">?</span></span><select id="host"><option>127.0.0.1</option><option>0.0.0.0</option></select></div>
           <div class="field"><span class="label">端口</span><input type="number" id="port" min="1" max="65535"></div>
+          <div class="field"><span class="label">模型名<span class="tip" data-tip="写入 API 的 model 名称，客户端可以用它或别名调用。">?</span></span><div class="control-row"><input type="text" id="modelName"><button class="st-btn st-btn--secondary st-btn--sm" id="copyModelBtn">复制</button></div></div>
           <div class="field"><span class="label">API Key<span class="tip" data-tip="模型客户端的密钥，独立于控制台。留空表示保持现有密钥；本机使用允许重复复制。">?</span></span><div><div class="control-row"><input type="password" id="apiKey" autocomplete="new-password"></div><div class="control-row" style="margin-top:6px"><button class="st-btn st-btn--secondary st-btn--sm" id="genKey">生成 sk-strata-*</button><button class="st-btn st-btn--secondary st-btn--sm" id="copyKeyBtn">复制</button><button class="st-btn st-btn--secondary st-btn--sm" id="clearKey">清除</button></div><div class="hint" id="keyState">未设置</div></div></div>
         </div>
         <div class="lan-extra" id="lanExtra">
@@ -171,6 +174,13 @@
 
       <div class="settings-page" id="page-manage">
         <div class="section">
+          <div class="section-title"><span>配置档</span><span class="badge plain" id="backupBadge">5 个备份</span></div>
+          <div class="field">
+            <span class="label">运行配置<span class="tip" data-tip="Strata 启动时读取的 JSON。切换配置档会同步全部参数。">?</span></span>
+            <div class="control-row"><select id="configSelect"></select><button class="btn-icon" id="openConfigBtn" title="打开配置文件">…</button></div>
+          </div>
+        </div>
+        <div class="section">
           <div class="section-title"><span>当前配置</span><span class="badge plain">只读</span></div>
           <div class="hint" id="manageSummary">—</div>
         </div>
@@ -189,8 +199,6 @@
           <div class="button-grid"><button class="st-btn st-btn--secondary st-btn--sm" id="commandBtn">查看启动命令</button><button class="st-btn st-btn--secondary st-btn--sm" id="openConfigBtn2">打开配置</button></div>
         </div>
       </div>
-    </div>
-
     <div class="settings-foot">
       <button class="st-btn st-btn--secondary" id="saveBtn">保存配置</button>
       <button class="st-btn st-btn--primary" id="startBtn">启动</button>
