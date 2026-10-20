@@ -1,4 +1,4 @@
-﻿# Strata Console
+# Strata Console
 
 一个轻量的 Windows 本地 Web 控制台，用于启动、配置和监控 **Strata** 模型服务。界面沿用 Strata 官方网页的视觉语言，后台是原生 C++ 服务，不依赖 Electron 或 WebView。
 
@@ -143,7 +143,7 @@ fp16 | int8 | q4_0 | k8v4
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build.ps1
-powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.1
+powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.2
 ```
 
 构建脚本通过 `vswhere` 查找 Visual Studio，也支持 `STRATA_VCVARS` 指定 `vcvars64.bat`。运行时包会生成在 `dist/`。
