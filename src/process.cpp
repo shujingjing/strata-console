@@ -2,10 +2,101 @@
 
 #include <array>
 #include <cmath>
+#include <set>
+
+#include <iphlpapi.h>
+#pragma comment(lib, "iphlpapi.lib")
 
 namespace {
 
 const int kBackoff[] = {2, 5, 10, 30, 60};
+
+std::string lower_text(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return (char)std::tolower(c); });
+    return s;
+}
+
+DWORD listener_pid_on_port(int port) {
+    ULONG size = 0;
+    DWORD rc = GetExtendedTcpTable(nullptr, &size, FALSE, AF_INET,
+                                   TCP_TABLE_OWNER_PID_LISTENER, 0);
+    if (rc != ERROR_INSUFFICIENT_BUFFER || size == 0) return 0;
+    std::vector<BYTE> buf(size);
+    auto* table = reinterpret_cast<PMIB_TCPTABLE_OWNER_PID>(buf.data());
+    rc = GetExtendedTcpTable(table, &size, FALSE, AF_INET,
+                             TCP_TABLE_OWNER_PID_LISTENER, 0);
+    if (rc != NO_ERROR) return 0;
+    for (DWORD i = 0; i < table->dwNumEntries; ++i) {
+        const auto& row = table->table[i];
+        if (ntohs((u_short)row.dwLocalPort) == port) return row.dwOwningPid;
+    }
+    return 0;
+}
+
+bool process_under_root(DWORD pid, const std::string& root, std::string& image) {
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!h) return false;
+    wchar_t path[32768] = {};
+    DWORD n = (DWORD)std::size(path);
+    bool ok = QueryFullProcessImageNameW(h, 0, path, &n) != 0;
+    CloseHandle(h);
+    if (!ok) return false;
+    image = util::narrow(std::wstring(path, n));
+    std::string p = lower_text(image);
+    std::string r = lower_text(root);
+    std::replace(p.begin(), p.end(), '/', '\\');
+    std::replace(r.begin(), r.end(), '/', '\\');
+    if (!r.empty() && r.back() != '\\') r += '\\';
+    return p.rfind(r, 0) == 0;
+}
+
+std::string process_command_line(DWORD pid) {
+    std::wstring ps = L"powershell -NoProfile -NonInteractive -Command \"(Get-CimInstance Win32_Process -Filter 'ProcessId=" +
+                      std::to_wstring(pid) + L"').CommandLine\"";
+    auto cap = util::run_capture(ps, L"", 5000);
+    return util::trim(cap.out);
+}
+
+bool is_model_service_process(DWORD pid, const std::string& root,
+                              std::string& image, std::string& command) {
+    if (process_under_root(pid, root, image)) return true;
+    command = lower_text(process_command_line(pid));
+    std::replace(command.begin(), command.end(), '/', '\\');
+    std::string r = lower_text(root);
+    std::replace(r.begin(), r.end(), '/', '\\');
+    if (!r.empty() && r.back() != '\\') r += '\\';
+    std::string venv = r + ".venv\\scripts\\python.exe";
+    std::string server = r + "serve\\server.py";
+    if (command.find(venv) != std::string::npos ||
+        command.find(server) != std::string::npos) return true;
+    // External launch scripts often use relative paths from the Strata root.
+    return command.find(".venv\\scripts\\python.exe") != std::string::npos &&
+           command.find("serve\\server.py") != std::string::npos;
+}
+
+bool clear_model_port(int port, const std::string& root, std::string& err) {
+    if (port <= 0 || !util::tcp_port_open(port)) return true;
+    DWORD pid = listener_pid_on_port(port);
+    if (pid == 0) {
+        err = "端口 " + std::to_string(port) + " 已被占用，未找到监听进程";
+        return false;
+    }
+    std::string image, command;
+    if (!is_model_service_process(pid, root, image, command)) {
+        err = "端口 " + std::to_string(port) + " 被其他进程占用 (PID " +
+              std::to_string(pid) + (image.empty() ? "" : ", " + image) + ")";
+        return false;
+    }
+    std::wstring cmd = L"taskkill /PID " + std::to_wstring(pid) + L" /T /F";
+    util::run_capture(cmd, L"", 5000);
+    for (int i = 0; i < 50 && util::tcp_port_open(port); ++i) Sleep(100);
+    if (util::tcp_port_open(port)) {
+        err = "端口 " + std::to_string(port) + " 释放失败，请手动结束 PID " + std::to_string(pid);
+        return false;
+    }
+    return true;
+}
 
 json slim_metrics(const json& m) {
     json out = json::object();
@@ -17,6 +108,38 @@ json slim_metrics(const json& m) {
         if (it != m.end()) out[k] = *it;
     }
     return out;
+}
+
+double num_value(const json& j, const char* key) {
+    auto it = j.find(key);
+    if (it == j.end()) return 0;
+    if (it->is_number()) return it->get<double>();
+    if (it->is_string()) {
+        try { return std::stod(it->get<std::string>()); } catch (...) {}
+    }
+    return 0;
+}
+
+std::string request_key(const json& r) {
+    std::string id = r.value("id", "");
+    if (!id.empty()) return "id:" + id;
+    long long t = (long long)std::llround(num_value(r, "time"));
+    return "t:" + std::to_string(t) + "|" + r.value("endpoint", "") + "|" +
+           std::to_string((long long)num_value(r, "prompt_tokens")) + "|" +
+           std::to_string((long long)num_value(r, "output_tokens")) + "|" +
+           r.value("finish", "");
+}
+
+double request_time(const json& r) {
+    return num_value(r, "time");
+}
+
+void sort_history(json& history) {
+    std::sort(history.begin(), history.end(), [](const json& a, const json& b) {
+        double ta = request_time(a), tb = request_time(b);
+        if (ta != tb) return ta > tb;
+        return a.value("id", "") > b.value("id", "");
+    });
 }
 
 bool health_ok(const json& h) {
@@ -53,6 +176,8 @@ void StatusCache::start() {
 void StatusCache::stop() {
     running_ = false;
     if (thread_.joinable()) thread_.join();
+    std::lock_guard<std::mutex> lk(m_);
+    save_history_locked(true);
 }
 
 void StatusCache::set_target(int port, const std::string& key, const std::string& log_path) {
@@ -68,6 +193,79 @@ void StatusCache::set_target(int port, const std::string& key, const std::string
         updated_ = util::now_epoch();
         failures_ = 0;
     }
+}
+
+void StatusCache::set_history_path(const std::string& path) {
+    std::lock_guard<std::mutex> lk(m_);
+    history_path_ = path;
+    load_history_locked();
+}
+
+void StatusCache::load_history_locked() {
+    history_ = json::array();
+    if (history_path_.empty() || !util::is_file(history_path_)) return;
+    std::string err;
+    auto doc = util::read_json(history_path_, err);
+    if (!doc) return;
+    if (doc->is_array()) {
+        history_ = *doc;
+    } else if (doc->is_object() && doc->contains("requests") && (*doc)["requests"].is_array()) {
+        history_ = (*doc)["requests"];
+    }
+    if (!history_.is_array()) history_ = json::array();
+    sort_history(history_);
+    if (history_.size() > 500) history_.erase(history_.begin() + 500, history_.end());
+}
+
+bool StatusCache::merge_history_locked(const json& metrics) {
+    if (!metrics.is_object()) return false;
+    auto it = metrics.find("requests");
+    if (it == metrics.end() || !it->is_array()) return false;
+
+    std::set<std::string> keys;
+    for (const auto& r : history_) if (r.is_object()) keys.insert(request_key(r));
+
+    std::string model;
+    auto engine = metrics.find("engine");
+    if (engine != metrics.end() && engine->is_object()) model = engine->value("model", "");
+    bool changed = false;
+    for (const auto& src : *it) {
+        if (!src.is_object()) continue;
+        std::string key = request_key(src);
+        if (keys.count(key)) continue;
+        json r = src;
+        if (!r.contains("model") && !model.empty()) r["model"] = model;
+        history_.push_back(std::move(r));
+        keys.insert(key);
+        changed = true;
+    }
+    if (!changed) return false;
+    sort_history(history_);
+    if (history_.size() > 500) history_.erase(history_.begin() + 500, history_.end());
+    return true;
+}
+
+void StatusCache::save_history_locked(bool force) {
+    (void)force;
+    if (history_path_.empty()) return;
+    int64_t now = util::now_epoch();
+    json doc{{"updated", now}, {"requests", history_}};
+    std::string err;
+    if (util::write_json_atomic(history_path_, doc, err)) history_saved_ = now;
+}
+
+json StatusCache::history_totals_locked() const {
+    double prompts = 0, outputs = 0, drafts_accepted = 0, drafts_offered = 0;
+    for (const auto& r : history_) {
+        prompts += num_value(r, "prompt_tokens");
+        outputs += num_value(r, "output_tokens");
+        drafts_accepted += num_value(r, "drafts_accepted");
+        drafts_offered += num_value(r, "drafts_offered");
+    }
+    double since = history_.empty() ? 0 : request_time(history_.back());
+    return json{{"requests", history_.size()}, {"prompt_tokens", prompts},
+                {"output_tokens", outputs}, {"drafts_accepted", drafts_accepted},
+                {"drafts_offered", drafts_offered}, {"since", since}};
 }
 
 void StatusCache::loop() {
@@ -97,7 +295,10 @@ void StatusCache::loop() {
                     metrics_ = json();
                 }
             }
-            if (metrics && metrics->is_object()) metrics_ = slim_metrics(*metrics);
+            if (metrics && metrics->is_object()) {
+                metrics_ = slim_metrics(*metrics);
+                if (merge_history_locked(metrics_)) save_history_locked(false);
+            }
             if (!err.empty()) error_ = err;
             else if (health && metrics) error_.clear();
             if (!last.empty()) last_log_ = last;
@@ -109,9 +310,17 @@ void StatusCache::loop() {
 
 json StatusCache::state() {
     std::lock_guard<std::mutex> lk(m_);
+    json metrics = metrics_;
+    if (!history_.empty()) {
+        if (!metrics.is_object()) metrics = json::object();
+        metrics["requests_session"] = metrics.value("requests", json::array());
+        metrics["requests"] = history_;
+        metrics["history_totals"] = history_totals_locked();
+        metrics["history_kept"] = history_.size();
+    }
     return json{{"port", port_},
                 {"health", health_},
-                {"metrics", metrics_},
+                {"metrics", metrics},
                 {"error", error_},
                 {"last_log", last_log_},
                 {"updated", updated_}};
@@ -169,6 +378,15 @@ bool ProcessManager::start(bool lazy_override, bool is_restart, std::string& err
     std::string key = config_.api_key();
     int port = config_.model_port();
     std::wstring cmd = config_.build_command(lazy_override);
+
+    // If a previous console/service left the model port open, stop that service
+    // before starting the new one. Only processes under the Strata root are touched.
+    if (!clear_model_port(port, root, err)) {
+        std::lock_guard<std::mutex> lk(m_);
+        state_ = "error";
+        last_error_ = err;
+        return false;
+    }
 
     // The engine needs the CUDA toolkit runtime on PATH; the config's lib_dirs win too.
     std::vector<std::string> libs;
@@ -259,18 +477,49 @@ bool ProcessManager::stop(bool unload_first, std::string& err) {
     HANDLE h = nullptr;
     int port = 0;
     std::string key;
+    bool external = false;
     {
         std::lock_guard<std::mutex> lk(m_);
+        key = config_.api_key();
         if (!proc_) {
-            state_ = "stopped";
-            err = "模型服务未运行";
+            int cfg_port = config_.model_port();
+            if (cfg_port <= 0 || !util::tcp_port_open(cfg_port)) {
+                state_ = "stopped";
+                err = "模型服务未运行";
+                return false;
+            }
+            external = true;
+            port = cfg_port;
+            state_ = "stopping";
+        } else {
+            h = proc_;
+            port = active_port_;
+            intentional_ = true;
+            state_ = "stopping";
+        }
+    }
+
+    if (external) {
+        std::string root = config_.root();
+        if (!clear_model_port(port, root, err)) {
+            std::lock_guard<std::mutex> lk(m_);
+            state_ = "external";
+            last_error_ = err;
             return false;
         }
-        h = proc_;
-        port = active_port_;
-        key = config_.api_key();
-        intentional_ = true;
-        state_ = "stopping";
+        {
+            std::lock_guard<std::mutex> lk(m_);
+            proc_ = nullptr;
+            pid_ = 0;
+            owned_ = false;
+            active_port_ = 0;
+            state_ = "stopped";
+            exit_code_ = 0;
+            last_error_.clear();
+            next_restart_ = {};
+        }
+        status_.set_target(0, key, "");
+        return true;
     }
 
     if (unload_first && port > 0) {

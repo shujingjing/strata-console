@@ -25,15 +25,19 @@ Strata 的启动参数很多，手动改 JSON、找日志、查显存状态容�
 
 ### 图形化配置
 
-- 自动读取 Strata 的 `strata-*.json`，模型、Pack、Tokenizer、引擎路径自动填充。
-- 模型/Pack/Tokenizer 可手动修改，启动前提示兼容性风险。
-- 上下文、KV、图片、采样、思考强度、低内存模式、GPU、投机解码、Prefill 分块、Expert Cache 等参数可视化。
+- 从 `Strata-data` 自动读取模型；基本设置提供当前模型选择器，支持多模型和 GGUF 原生模型。
+- 切换模型时自动同步 GGUF、Pack、Tokenizer、MTP、vision 等路径，无需分别设置。
+- 自动读取 Strata 的 `strata-*.json`，兼容 0.2.4 的 `user_args` 与 UTF-8 BOM。
+- 上下文、KV、图片、采样、思考强度、Reasoning Budget、存在/重复惩罚、低内存模式、GPU、投机解码、Prefill 分块、Expert Cache 等参数可视化。
+- 上下文、Max Tokens、Reasoning Budget、KV 驻留、Prefill 分块和视觉 token 支持预设 + 手动输入。
 - 参数名旁有 `?`，悬停显示说明、默认值和影响。
 - 配置按 **基本 / 推理 / 网络 / 配置管理** 分页，高级项折叠。
 
 ### 进程与稳定性
 
-- 启动、停止、重启、加载、卸载。
+- 启动、停止、重启、加载、卸载；支持停止由外部脚本启动的 Strata 服务。
+- 端口被旧 Strata 进程占用时，启动/重启会先终止旧进程再启动。
+- 修改参数后可“应用更改”；外部服务会先停止，再以新参数启动。
 - 中断后自动重启（默认开启），使用上次启动参数。
 - 自动重启默认附加 `--lazy`，API 先恢复，模型等首个请求再加载。
 - 默认空闲 60 分钟后卸载模型，界面按分钟设置。
@@ -44,7 +48,8 @@ Strata 的启动参数很多，手动改 JSON、找日志、查显存状态容�
 
 - 官方 Monitor 的关键指标：GPU 使用率、VRAM、温度、功耗、CPU、RAM、磁盘、PCIe。
 - 当前请求状态、预填/解码速度、上下文占用、专家缓存。
-- 最近请求表（元数据，不保留提示词）。
+- 最近请求表显示模型、专家缓存命中率、草稿接受率和耗时；点击可查看完整元数据。
+- 最近 500 条请求元数据跨会话保存，便于比较不同模型和量化版本。
 - 命令行 Tab 实时跟随 server/engine 日志。
 - 请求 Tab 显示 `/metrics` 元数据；开启 `api_monitor` 后可打开官方 `/api-monitor` 查看请求内容。
 
@@ -143,7 +148,7 @@ fp16 | int8 | q4_0 | k8v4
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build.ps1
-powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.2
+powershell -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.3
 ```
 
 构建脚本通过 `vswhere` 查找 Visual Studio，也支持 `STRATA_VCVARS` 指定 `vcvars64.bat`。运行时包会生成在 `dist/`。

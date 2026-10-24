@@ -1,9 +1,14 @@
-﻿"use strict";
+"use strict";
 
 const $ = (id) => document.getElementById(id);
 const state = {
   csrf: "",
   payload: null,
+  models: [],
+  requests: [],
+  selectedRequestKey: "",
+  pendingRestart: false,
+  dirtyFields: new Set(),
   live: null,
   dirty: false,
   original: {},
@@ -13,6 +18,7 @@ const state = {
   logPath: "",
   clearKey: false,
   apiKeySet: false,
+  apiKeyDisabled: false,
   lastError: "",
   pollTimer: null,
 };
@@ -107,6 +113,17 @@ function isOn(id) {
   return $(id)?.getAttribute("aria-checked") === "true";
 }
 
+function bindTokenPreset(inputId, presetId) {
+  const select = $(presetId);
+  if (!select) return;
+  select.addEventListener("change", () => {
+    if (select.value === "") return;
+    setField(inputId, select.value === "__clear__" ? "" : select.value);
+    markDirty(inputId);
+    select.value = "";
+  });
+}
+
 function bindToggle(id, cb) {
   const el = $(id);
   if (!el) return;
@@ -114,24 +131,41 @@ function bindToggle(id, cb) {
     if (el.disabled) return;
     const on = !isOn(id);
     setToggle(id, on);
-    markDirty();
+    markDirty(id);
     cb?.(on);
   });
 }
 
-function markDirty() {
+function markDirty(field = "*") {
   state.dirty = true;
+  state.dirtyFields.add(field);
   const b = $("saveState");
   b.textContent = "未保存";
   b.className = "badge warn";
   updatePathState();
+  updateButtons();
+}
+
+function restartRequired() {
+  if (state.pendingRestart) return true;
+  if (!state.dirty) return false;
+  if (state.dirtyFields.has("*")) return true;
+  const noRestart = new Set(["autoRestart", "lazyRestart", "openBrowser", "preventSleep", "backupCount", "startMode"]);
+  for (const field of state.dirtyFields) {
+    if (!noRestart.has(field)) return true;
+  }
+  return false;
 }
 
 function updatePathState() {
-  const changed = pathsChanged();
   const b = $("pathState");
-  if (changed) {
-    b.textContent = "已修改 · 需校验";
+  if (!(state.models || []).some((m) => m.installed)) {
+    b.textContent = "未发现模型";
+    b.className = "badge danger";
+    return;
+  }
+  if (pathsChanged()) {
+    b.textContent = "已切换 · 待保存";
     b.className = "badge warn";
   } else {
     b.textContent = "自动读取";
@@ -156,6 +190,7 @@ function numberValue(id, fallback = 0) {
 
 function buildForm() {
   return {
+    data_dir: value("dataDir"),
     model_name: value("modelName"),
     exe: value("exePath"),
     native: value("ggufPath"),
@@ -174,9 +209,12 @@ function buildForm() {
     vision_threads: numberValue("visionThreads", 8),
     idle_unload_min: numberValue("idleUnload", 60),
     reasoning_effort: value("reasoningEffort"),
+    reasoning_budget_tokens: value("reasoningBudget"),
     temperature: value("temperature"),
     top_p: value("topP"),
     top_k: value("topK"),
+    presence_penalty: value("presencePenalty"),
+    repetition_penalty: value("repetitionPenalty"),
     seed: value("seed"),
     max_tokens: value("maxTokens"),
     fit_max_tokens: isOn("fitMaxTokens"),
@@ -214,6 +252,81 @@ function setField(id, v) {
   else el.value = v ?? "";
 }
 
+function fillModels(payload) {
+  const models = payload.models || [];
+  state.models = models;
+  const sel = $("modelSelect");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (!models.length) {
+    const o = document.createElement("option");
+    o.value = "";
+    o.textContent = "未发现已安装模型";
+    o.disabled = true;
+    sel.appendChild(o);
+    $("modelHint").textContent = "未找到模型";
+    renderModelSummary();
+    return;
+  }
+  let activeId = "";
+  for (const m of models) {
+    const o = document.createElement("option");
+    o.value = m.id || "";
+    let text = m.name || m.id || "未命名模型";
+    if (m.quant) text += ` · ${m.quant}`;
+    if (!m.installed) text += " · 不完整";
+    o.textContent = text;
+    o.disabled = !m.installed;
+    o.title = [m.model_name, m.pack, m.native, m.reason].filter(Boolean).join("\n");
+    if (m.active) {
+      o.selected = true;
+      activeId = m.id;
+    }
+    sel.appendChild(o);
+  }
+  if (!activeId) {
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = "当前配置不在该模型位置，请选择";
+    ph.disabled = true;
+    ph.selected = true;
+    sel.prepend(ph);
+    $("modelHint").textContent = "当前配置不在该位置，请选择模型";
+    renderModelSummary();
+    return;
+  }
+  const current = modelById(sel.value);
+  $("modelHint").textContent = current
+    ? `${models.filter((m) => m.installed).length} 个已安装模型`
+    : "自动读取已安装模型";
+  renderModelSummary();
+}
+
+function modelById(id) {
+  return (state.models || []).find((m) => m.id === id) || null;
+}
+
+function renderModelSummary() {
+  const box = $("modelSummary");
+  if (!box) return;
+  const m = modelById($("modelSelect")?.value);
+  if (!m) {
+    box.innerHTML = `<div class="row"><span>状态</span><code>未选择模型</code></div>`;
+    return;
+  }
+  const rows = [
+    ["API 模型名", m.model_name || "—"],
+    ["量化", m.quant || "—"],
+    ["上下文", m.context ? `${Math.round(Number(m.context) / 1024)}K` : "—"],
+    ["大小", m.size_bytes ? `${gb(m.size_bytes)} GB` : "—"],
+    ["Pack", m.native_only ? "GGUF 原生（无 Pack）" : (m.pack || "—")],
+    ["GGUF", m.native || "—"],
+  ];
+  box.innerHTML = rows.map(([k, val]) =>
+    `<div class="row"><span>${esc(k)}</span><code title="${esc(val)}">${esc(val)}</code></div>`
+  ).join("") + (m.installed ? "" : `<div class="row"><span>状态</span><code class="danger">${esc(m.reason || "模型文件不完整")}</code></div>`);
+}
+
 function fillConfig(payload) {
   state.payload = payload;
   const v = payload.view || {};
@@ -235,6 +348,12 @@ function fillConfig(payload) {
     sel.appendChild(o);
   }
 
+  fillModels(payload);
+  setField("dataDir", payload.data_dir || v.data_dir || "");
+  $("dataDirHint").textContent = (payload.models || []).length
+    ? "自动读取 models、packs、mtp"
+    : "未找到模型，请选择 Strata-data 根目录";
+
   setField("modelName", v.model_name);
   setField("ggufPath", v.native);
   setField("packPath", v.pack);
@@ -248,11 +367,33 @@ function fillConfig(payload) {
   setField("idleUnload", v.idle_unload_min ?? 60);
   setField("lowRam", v.low_ram || "off");
   setField("gpu", v.gpu || "");
+  $("gpu").disabled = !!v.gpu_roles_active;
+  if (v.gpu_roles_active) {
+    $("gpuRolesHint").textContent = `由 Strata App/Terminal 管理：${v.gpu_roles_text || "Main / Helper / Off"}`;
+    $("gpuRolesHint").className = "hint ok";
+  } else {
+    $("gpuRolesHint").textContent = "留空=默认；支持单卡 0 或分层 0,2";
+    $("gpuRolesHint").className = "hint";
+  }
   setToggle("mtpEnabled", v.mtp);
-  setField("mtpPath", v.mtp_kind === "count" ? (v.mtp_value || "") : (v.mtp_path || v.mtp_detected_path || ""));
+  const nativeMtp = !!v.mtp_native;
+  $("mtpPathLabel").style.display = nativeMtp ? "none" : "";
+  $("mtpControl").style.display = nativeMtp ? "none" : "";
+  $("mtpPath").placeholder = "...\\mtp\\rt";
+  $("browseMtp").style.display = nativeMtp ? "none" : "";
+  $("browseMtp").disabled = nativeMtp;
+  setField("mtpPath", nativeMtp ? "" : (v.mtp_path || v.mtp_detected_path || ""));
   $("mtpPath").disabled = !v.mtp;
+  setText("specLabelText", nativeMtp ? "MTP 草稿数" : "投机窗口");
+  $("specTip").dataset.tip = nativeMtp
+    ? "模型自带草稿：这里写 --mtp N 的草稿数，即每一步推测解码中 MTP 头提议的 token 数。范围 1–7，常用 2–3。"
+    : "对应 --spec，MTP 推测窗口，常用 4；越大不一定越快。";
+  $("spec").placeholder = nativeMtp ? "2" : "4";
+  $("specMinPField").style.display = nativeMtp ? "none" : "";
   updateMtpHint();
-  setField("spec", v.spec || "");
+  setField("spec", nativeMtp
+    ? (v.mtp_kind === "count" ? (v.mtp_value || "") : "")
+    : (v.spec || ""));
   setField("specMinP", v.spec_min_p || "");
   setField("prefill", v.prefill || "");
   setField("expertCache", v.expert_cache || "");
@@ -265,9 +406,12 @@ function fillConfig(payload) {
   setField("visionMaxTokens", v.vision_max_tokens || 768);
   setField("visionThreads", v.vision_threads || 8);
   setField("reasoningEffort", v.reasoning_effort || "");
+  setField("reasoningBudget", v.reasoning_budget_tokens ?? "");
   setField("temperature", v.temperature ?? "");
   setField("topP", v.top_p ?? "");
   setField("topK", v.top_k ?? "");
+  setField("presencePenalty", v.presence_penalty ?? "");
+  setField("repetitionPenalty", v.repetition_penalty ?? "");
   setField("seed", v.seed ?? "");
   setField("maxTokens", v.max_tokens || "");
   setToggle("fitMaxTokens", v.fit_max_tokens);
@@ -281,9 +425,15 @@ function fillConfig(payload) {
   setField("allowedHosts", v.allowed_hosts || "");
   setField("apiKey", "");
   state.apiKeySet = !!v.api_key_set;
+  state.apiKeyDisabled = !!v.api_key_disabled;
   const prefix = v.api_key_prefix || "sk-strata-…";
-  $("apiKey").placeholder = v.api_key_set ? `已设置 ${prefix}（留空保持不变）` : "未设置";
-  $("keyState").textContent = v.api_key_set ? `已设置 · ${prefix}` : "未设置";
+  if (state.apiKeyDisabled) {
+    $("apiKey").placeholder = "已显式关闭（none）";
+    $("keyState").textContent = "已关闭（none）";
+  } else {
+    $("apiKey").placeholder = v.api_key_set ? `已设置 ${prefix}（留空保持不变）` : "未设置";
+    $("keyState").textContent = v.api_key_set ? `已设置 · ${prefix}` : "未设置";
+  }
   state.clearKey = false;
   updateCorsHint();
 
@@ -311,6 +461,7 @@ function fillConfig(payload) {
   $("visionExe").disabled = !$("visionCheck").checked;
   $("visionMmproj").disabled = !$("visionCheck").checked;
   $("visionMaxTokens").disabled = !$("visionCheck").checked;
+  $("visionMaxTokensPreset").disabled = !$("visionCheck").checked;
   $("visionThreads").disabled = !$("visionCheck").checked;
   updateVisionHint();
   updateOptionalVisibility();
@@ -327,11 +478,13 @@ function fillConfig(payload) {
     state.original[id] = $(id)?.value || "";
   }
   state.dirty = false;
+  state.dirtyFields.clear();
   const b = $("saveState");
   b.textContent = "已保存";
   b.className = "badge ok";
-  $("pathState").textContent = "自动读取";
-  $("pathState").className = "badge warn";
+  const modelCount = (payload.models || []).filter((m) => m.installed).length;
+  $("pathState").textContent = modelCount ? "自动读取" : "未发现模型";
+  $("pathState").className = "badge " + (modelCount ? "warn" : "danger");
   updateButtons();
   renderWarnings(v.warnings || []);
 }
@@ -380,6 +533,14 @@ function updateMtpHint() {
   const on = isOn("mtpEnabled");
   const path = value("mtpPath");
   const v = state.payload?.view || {};
+  if (v.mtp_native) {
+    const drafts = value("spec");
+    el.textContent = on
+      ? `模型自带草稿${/^\d+$/.test(drafts) ? ` · 每步 ${drafts} 个草稿 token` : ""}；草稿数使用下方 MTP 草稿数`
+      : "模型自带草稿；启用后草稿数使用下方 MTP 草稿数";
+    el.className = on ? "hint ok" : "hint";
+    return;
+  }
   if (!on) {
     if (v.mtp_available && v.mtp_detected_path) {
       el.textContent = `检测到 MTP runtime：${v.mtp_detected_path}；打开后保存并重启生效`;
@@ -388,11 +549,6 @@ function updateMtpHint() {
       el.textContent = "MTP 未启用";
       el.className = "hint";
     }
-    return;
-  }
-  if (/^\d+$/.test(path)) {
-    el.textContent = `MTP 草稿数 = ${path}（Qwen3.6 等 own-path 模型）`;
-    el.className = "hint ok";
     return;
   }
   if (!path) {
@@ -509,6 +665,10 @@ async function copyApi() {
 async function copyKey() {
   let key = value("apiKey");
   if (!key) {
+    if (state.apiKeyDisabled) {
+      toast("API Key 已显式关闭（none）", "warn");
+      return;
+    }
     if (!state.apiKeySet) {
       toast("尚未设置 API Key", "warn");
       return;
@@ -552,7 +712,8 @@ function render(s) {
   $("statusPill").dataset.state = raw;
   setText("statusText", stLabel);
   setText("statusSub", `${cv.host || "127.0.0.1"}:${cv.port || 8080}`);
-  setText("consolePort", `:${s.app?.ui_port || 8090}`);
+  const consoleHost = (location.hostname && location.hostname !== "localhost") ? location.hostname : "127.0.0.1";
+  setText("consolePort", `${consoleHost}:${s.app?.ui_port || 8090}`);
 
   const model = h.model || eng.model || cv.model_name || "—";
   const ctx = Number(eng.max_context || cv.context || 0);
@@ -576,13 +737,10 @@ function render(s) {
   setText("ctxValue", `${used ? (used >= 1000 ? fmt(used / 1000, 1) + "K" : fmt(used)) : "0"}${ctx ? ` / ${Math.round(ctx / 1024)}K` : ""}`);
   $("ctxBar").style.width = `${frac}%`;
   setText("ctxSub", last ? `最近请求 ${fmt(last.prompt_tokens)} prompt · ${fmt(last.output_tokens)} output` : "暂无请求");
-  $("ctxGauge").setAttribute("stroke-dasharray", `${(235.6 * frac / 100).toFixed(1)} 314.2`);
-  setText("ctxPct", `${Math.round(frac)}%`);
-  setText("gaugeSub", `${fmt(used)} / ${ctx || "—"} tokens`);
 
   renderLive(live, last);
   renderMetrics(hw, hs, eng, m, cv);
-  renderRequests(m.requests || [], m.totals || null);
+  renderRequests(m.requests || [], m.totals || null, m);
   renderLogPreview(st.last_log || "");
   updateVisionHint();
   updateMtpHint();
@@ -652,17 +810,11 @@ function renderMetrics(hw, hs, eng, m, cv) {
   metric("mDisk", disk == null ? "—" : fmt(disk, disk < 10 ? 1 : 0), "MB/s", hw.disk_write_mb != null ? `写入 ${fmt(hw.disk_write_mb, 1)} MB/s` : "磁盘读取", "mDiskBar", Math.min(100, (disk || 0) / 1024 * 100));
   const gen = hw.gpu_pcie_gen_max || hw.gpu_pcie_gen;
   metric("mPcie", gen ? `Gen${gen}` : "—", hw.gpu_pcie_width ? `x${hw.gpu_pcie_width}` : "", hw.gpu_pcie_rx_mb != null ? `接收 ${fmt(hw.gpu_pcie_rx_mb, hw.gpu_pcie_rx_mb < 10 ? 1 : 0)} MB/s` : "PCIe", "mPcieBar", Math.min(100, (hw.gpu_pcie_rx_mb || 0) / 2048 * 100));
+}
 
-  const cache = Number(eng.expert_cache_mib || 0);
-  setText("expertsText", eng.expert_slots ? `${fmt(eng.expert_slots)} · ${fmt(cache / 1024, 1)} GB` : "—");
-  const expertsPct = pct(cache, Number(hw.gpu_mem_total || 0) / 1048576);
-  $("expertsBar").style.width = `${expertsPct}%`; tone($("expertsBar"), expertsPct);
-  setText("ramText", hw.ram_total ? `${gb(hw.ram_used)} / ${gb(hw.ram_total, 0)} GB` : "—");
-  const ramPct = pct(hw.ram_used, hw.ram_total);
-  $("ramBar").style.width = `${ramPct}%`; tone($("ramBar"), ramPct);
-  setText("tempText", temp == null ? "—" : `${fmt(temp)} °C`);
-  const tempPct = pct(temp, 90);
-  $("tempBar").style.width = `${tempPct}%`; tone($("tempBar"), tempPct);
+function finishText(finish) {
+  const map = { stop: "Done", length: "Max tokens", cancel: "Stopped", disconnect: "Closed", error: "Error" };
+  return map[finish] || finish || "—";
 }
 
 function finishBadge(finish) {
@@ -674,32 +826,119 @@ function finishBadge(finish) {
   return `<span class="badge ${cls}">${esc(label)}</span>`;
 }
 
+function requestKey(r) {
+  if (r.id) return `id:${r.id}`;
+  return `t:${Math.round(Number(r.time) || 0)}|${r.endpoint || ""}|${r.prompt_tokens || 0}|${r.output_tokens || 0}`;
+}
+
+function requestTimeText(r, full = false) {
+  if (!r.time) return "—";
+  const d = new Date(Number(r.time) * 1000);
+  if (full) return d.toLocaleString("zh-CN");
+  const now = new Date();
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const time = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return sameDay ? time : `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, "0")} ${time}`;
+}
+
+function draftStats(r) {
+  const offered = Number(r.drafts_offered || 0);
+  const accepted = Number(r.drafts_accepted || 0);
+  if (!offered) return null;
+  return { accepted, offered, pct: `${(accepted / offered * 100).toFixed(1)}%` };
+}
+
+function draftCell(r) {
+  const d = draftStats(r);
+  return d ? d.pct : "\u2014";
+}
+
+function draftRateText(t) {
+  if (!t || !Number(t.drafts_offered)) return "";
+  const pct = Number(t.drafts_accepted || 0) / Number(t.drafts_offered) * 100;
+  return ` \u00b7 \u8349\u7a3f\u63a5\u53d7 ${pct.toFixed(1)}%`;
+}
+
 function requestRows(reqs, details) {
-  if (!reqs.length) return `<tr><td colspan="${details ? 6 : 9}" class="muted">暂无请求</td></tr>`;
+  if (!reqs.length) return `<tr><td colspan="${details ? 8 : 11}" class="muted">暂无请求</td></tr>`;
   return reqs.map((r) => {
-    const t = r.time ? new Date(r.time * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—";
+    const t = requestTimeText(r);
+    const title = [requestTimeText(r, true), r.model, r.endpoint].filter(Boolean).join(" · ");
+    const model = esc(r.model || "—");
     if (details) {
-      return `<tr><td>${esc(t)}</td><td class="mono">${esc(r.endpoint || "API")}</td><td>${finishBadge(r.finish)}</td><td class="num">${fmt(r.prompt_tokens)}</td><td class="num">${fmt(r.output_tokens)}</td><td class="num">${fmt(r.duration_s, 1)}s</td></tr>`;
+      return `<tr data-req-key="${esc(requestKey(r))}" title="${esc(title)}"><td>${esc(t)}</td><td>${model}</td><td class="mono">${esc(r.endpoint || "API")}</td><td>${finishBadge(r.finish)}</td><td class="num">${fmt(r.prompt_tokens)}</td><td class="num">${fmt(r.output_tokens)}</td><td class="num">${draftCell(r)}</td><td class="num">${fmt(r.duration_s, 1)}s</td></tr>`;
     }
     const fresh = r.prompt_tokens == null ? null : Math.max(0, Number(r.prompt_tokens) - Number(r.reused || 0));
     const prefill = fresh > 0 && r.prompt_ms > 0 ? fresh / (r.prompt_ms / 1000) : null;
     const hit = r.hit_rate == null ? "—" : `${(Number(r.hit_rate) * 100).toFixed(1)}%`;
-    return `<tr><td>${esc(t)}</td><td>${finishBadge(r.finish)}</td><td class="num">${fmt(r.prompt_tokens)}</td><td class="num">${fmt(r.reused)}</td><td class="num">${fmt(r.output_tokens)}</td><td class="num">${fmt(prefill)}</td><td class="num">${fmt(r.decode_tok_s, 1)}</td><td class="num">${esc(hit)}</td><td class="num">${fmt(r.duration_s, 1)}s</td></tr>`;
+    return `<tr title="${esc(title)}"><td>${esc(t)}</td><td>${model}</td><td>${finishBadge(r.finish)}</td><td class="num">${fmt(r.prompt_tokens)}</td><td class="num">${fmt(r.reused)}</td><td class="num">${fmt(r.output_tokens)}</td><td class="num">${fmt(prefill)}</td><td class="num">${fmt(r.decode_tok_s, 1)}</td><td class="num">${esc(hit)}</td><td class="num">${draftCell(r)}</td><td class="num">${fmt(r.duration_s, 1)}s</td></tr>`;
   }).join("");
 }
 
-function renderRequests(reqs, totals) {
-  const list = reqs.slice(0, 12);
+function renderRequestDetail(r) {
+  const box = $("requestDetail");
+  if (!box) return;
+  if (!r) {
+    box.innerHTML = `<div class="empty"><b>选择一条请求</b><br><br>显示耗时、吞吐与专家命中率等元数据。<br>请求内容需启用 api_monitor 后在官方页面查看。</div>`;
+    return;
+  }
+  const fresh = r.prompt_tokens == null ? null : Math.max(0, Number(r.prompt_tokens) - Number(r.reused || 0));
+  const prefill = fresh > 0 && r.prompt_ms > 0 ? fresh / (r.prompt_ms / 1000) : null;
+  const pctText = (v) => v == null ? "—" : `${(Number(v) * 100).toFixed(1)}%`;
+  const rows = [
+    ["时间", requestTimeText(r, true)],
+    ["模型", r.model || "—"],
+    ["端点", r.endpoint || "API"],
+    ["状态", finishText(r.finish)],
+    ["Prompt", fmt(r.prompt_tokens)],
+    ["复用", fmt(r.reused)],
+    ["输出", fmt(r.output_tokens)],
+    ["首 token", r.first_engine_token_s == null ? "—" : `${fmt(r.first_engine_token_s, 2)}s`],
+    ["耗时", `${fmt(r.duration_s, 1)}s`],
+    ["Prefill ms", r.prompt_ms == null ? "—" : `${fmt(r.prompt_ms, 1)} ms`],
+    ["Decode ms", r.decode_ms == null ? "—" : `${fmt(r.decode_ms, 1)} ms`],
+    ["Prefill t/s", fmt(prefill, 1)],
+    ["Decode t/s", fmt(r.decode_tok_s, 1)],
+    ["专家缓存命中率", pctText(r.hit_rate)],
+    ["PCIe 占比", pctText(r.pcie_share)],
+    ["RAM / File blobs", `${fmt(r.ram_blobs)} / ${fmt(r.file_blobs)}`],
+    ["草稿接受", `${fmt(r.drafts_accepted)} / ${fmt(r.drafts_offered)}`],
+    ["草稿接受率", draftStats(r) ? draftStats(r).pct : "—"],
+  ];
+  box.innerHTML = `<div class="req-head" style="margin-bottom:8px"><span class="card-title">请求元数据</span><span class="badge plain">只读</span></div>
+    <table class="diff"><tbody>${rows.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</tbody></table>
+    <div class="hint" style="margin-top:8px">这里只显示元数据；启用 api_monitor 后可在官方监视页查看请求内容。</div>`;
+}
+
+function renderRequests(reqs, totals, metrics) {
+  const list = reqs.slice(0, 30);
+  state.requests = list;
   $("reqBody").innerHTML = requestRows(list, false);
   $("reqTabBody").innerHTML = requestRows(list, true);
+  for (const row of $("reqTabBody").querySelectorAll("tr[data-req-key]"))
+    row.classList.toggle("selected", row.getAttribute("data-req-key") === state.selectedRequestKey);
+  const history = metrics?.history_totals || null;
+  const kept = Number(metrics?.history_kept || reqs.length || 0);
   setText("reqCount", reqs.length);
-  setText("reqSummary", reqs.length ? `最近 ${Math.min(12, reqs.length)} 条` : "暂无请求");
-  setText("reqTabSummary", reqs.length ? `最近 ${Math.min(12, reqs.length)} 条元数据` : "暂无请求");
+  setText("reqSummary", reqs.length ? `显示 ${list.length} / ${kept} 条` : "暂无请求");
+  setText("reqTabSummary", reqs.length ? `显示 ${list.length} / ${kept} 条元数据` : "暂无请求");
   if (totals && totals.requests) {
     const since = totals.since ? new Date(totals.since * 1000).toLocaleString("zh-CN") : "";
-    setText("reqTotals", `累计 ${fmt(totals.requests)} 请求 · ${fmt(totals.output_tokens)} 输出 tokens${since ? ` · 自 ${since}` : ""}`);
+    const hist = history && history.requests ? ` · 历史 ${fmt(history.requests)}` : "";
+    setText("reqTotals", `本会话 ${fmt(totals.requests)} 请求 · ${fmt(totals.output_tokens)} 输出 tokens${hist}${since ? ` · 自 ${since}` : ""}`);
+  } else if (history && history.requests) {
+    const since = history.since ? new Date(history.since * 1000).toLocaleString("zh-CN") : "";
+    setText("reqTotals", `历史 ${fmt(history.requests)} 请求 · ${fmt(history.output_tokens)} 输出 tokens${since ? ` · 自 ${since}` : ""}`);
   } else {
     setText("reqTotals", "");
+  }
+  const draftSummary = draftRateText(totals) || draftRateText(history);
+  if (draftSummary) setText("reqTotals", `${$("reqTotals").textContent}${draftSummary}`);
+  const selected = state.requests.find((r) => requestKey(r) === state.selectedRequestKey);
+  if (selected) renderRequestDetail(selected);
+  else {
+    state.selectedRequestKey = "";
+    renderRequestDetail(null);
   }
   setText("stateUpdated", state.live?.now ? `更新于 ${state.live.now}` : "");
 }
@@ -736,10 +975,21 @@ function updateButtons() {
   const raw = p.state || "stopped";
   const owned = !!p.owned;
   const hasConfig = !!(state.payload?.active || state.live?.config?.config_path);
+  const transitioning = ["starting", "stopping", "restarting"].includes(raw);
   const canStart = hasConfig && !["starting", "loading", "running", "unloaded", "stopping", "restarting", "external"].includes(raw);
-  $("startBtn").disabled = !canStart;
-  $("startBtn").textContent = (raw === "stopped" || raw === "error") ? "启动" : (raw === "external" ? "外部服务" : "运行中");
-  $("stopBtn").disabled = !(owned && !["stopped", "stopping"].includes(raw));
+  const pendingRestart = state.pendingRestart && ["running", "loading", "unloaded", "external"].includes(raw);
+  if (state.dirty || pendingRestart) {
+    $("startBtn").disabled = !hasConfig || transitioning;
+    $("startBtn").textContent = "应用更改";
+    $("startBtn").title = state.dirty
+      ? "保存修改；运行中的服务会提示是否重启"
+      : "修改已保存，需要重启服务后生效";
+  } else {
+    $("startBtn").disabled = !canStart;
+    $("startBtn").textContent = (raw === "stopped" || raw === "error") ? "启动服务" : (raw === "external" ? "外部服务" : "运行中");
+    $("startBtn").title = "启动模型服务；启动模式为预加载时会同时加载模型，延迟加载则在首个请求时加载";
+  }
+  $("stopBtn").disabled = !((owned && !["stopped", "stopping"].includes(raw)) || raw === "external");
   $("loadBtn").disabled = !["running", "unloaded", "external"].includes(raw);
   $("unloadBtn").disabled = raw !== "running";
   $("restartBtn").disabled = !(raw === "running" || raw === "loading" || raw === "unloaded");
@@ -756,8 +1006,10 @@ async function pollState() {
     if (s.app?.init_error && !s.config?.config_path) {
       setText("workspaceSub", s.app.init_error);
     }
-    // If the active config changed on disk/by another tab, refresh the form.
+    // If the active config or model folder changed on disk/by another tab, refresh the form.
     if (s.config?.config_path && state.payload?.active && s.config.config_path !== state.payload.active) {
+      await loadConfig(true);
+    } else if (s.config?.data_dir && state.payload?.data_dir && s.config.data_dir !== state.payload.data_dir) {
       await loadConfig(true);
     }
   } catch (e) {
@@ -788,13 +1040,117 @@ async function loadConfig(quiet = false) {
   }
 }
 
+async function refreshModels() {
+  try {
+    const r = await api("/api/models");
+    fillModels({ ...(state.payload || {}), models: r.models || [], data_dir: r.data_dir || "" });
+    setField("dataDir", r.data_dir || "");
+    toast(`已扫描到 ${(r.models || []).filter((m) => m.installed).length} 个可用模型`, "ok");
+  } catch (e) {
+    toast(`扫描模型失败: ${e.message}`, "err", 7000);
+  }
+}
+
+async function applyDataDir(path) {
+  const dir = String(path || "").trim();
+  if (!dir) return;
+  try {
+    if (state.dirty) await saveConfig(true);
+    const payload = await post("/api/data-dir", { path: dir });
+    fillConfig(payload);
+    const n = (payload.models || []).filter((m) => m.installed).length;
+    toast(`模型位置已更新，发现 ${n} 个可用模型`, "ok");
+    const raw = state.live?.process?.state || "";
+    if (["running", "loading", "unloaded"].includes(raw)) {
+      toast("模型位置已切换；当前服务仍使用旧路径，重启后生效", "warn", 7000);
+    }
+  } catch (e) {
+    toast(`切换模型位置失败: ${e.message}`, "err", 8000);
+    await loadConfig(true);
+  }
+}
+
+async function selectModel(id) {
+  if (!id) return;
+  const current = modelById(id);
+  if (!current || !current.installed) {
+    if (current) toast(current.reason || "模型文件不完整", "warn", 7000);
+    return;
+  }
+  try {
+    if (state.dirty) await saveConfig(true);
+    const payload = await post("/api/models/select", { id });
+    fillConfig(payload);
+    const raw = state.live?.process?.state || "";
+    if (["running", "loading", "unloaded"].includes(raw)) {
+      if (confirm(`已切换到 ${current.name || current.id}。\n\n现在重启模型服务以加载新模型？`)) {
+        await restartServer();
+      } else {
+        state.pendingRestart = true;
+        updateButtons();
+        toast("模型配置已切换；点击“应用更改”或“重启”后生效", "warn", 8000);
+      }
+    } else {
+      toast(`已切换到 ${current.name || current.id}`, "ok");
+    }
+  } catch (e) {
+    toast(`切换模型失败: ${e.message}`, "err", 8000);
+    await loadConfig(true);
+  }
+}
+
 async function saveConfig(quiet = false) {
   const data = buildForm();
-  if (!data.native && !data.pack) throw new Error("请先选择模型或 Pack 目录");
+  if (!data.native && !data.pack) throw new Error("请先选择已安装模型");
   const payload = await post("/api/config", data);
   fillConfig(payload);
   if (!quiet) toast("配置已保存，备份已生成", "ok");
   return payload;
+}
+
+async function applyChanges() {
+  const raw = state.live?.process?.state || "stopped";
+  const needsRestart = ["running", "loading", "unloaded", "external"].includes(raw);
+  const hadDirty = state.dirty;
+  const restart = needsRestart && restartRequired();
+  try {
+    if (hadDirty) await saveConfig(true);
+    if (!needsRestart) {
+      toast("配置已保存；启动服务后生效", "ok");
+      updateButtons();
+      return;
+    }
+    if (!restart) {
+      toast("配置已保存", "ok");
+      updateButtons();
+      return;
+    }
+    state.pendingRestart = true;
+    updateButtons();
+    if (!confirm("当前修改需重启模型服务才能生效，是否立即重启服务？")) {
+      toast("配置已保存；重启服务后生效", "warn", 7000);
+      updateButtons();
+      return;
+    }
+    if (raw === "external") {
+      await post("/api/stop");
+      await post("/api/start", { lazy: value("startMode") === "lazy" });
+      state.pendingRestart = false;
+      toast("外部服务已停止，正在以新参数启动", "ok");
+      await pollState();
+      return;
+    }
+    await post("/api/restart", { lazy: value("startMode") === "lazy" });
+    state.pendingRestart = false;
+    toast("服务重启中", "ok");
+    await pollState();
+  } catch (e) {
+    if (needsRestart) {
+      state.pendingRestart = true;
+      updateButtons();
+    }
+    toast(`应用更改失败: ${e.message}`, "err", 8000);
+  }
 }
 
 async function startServer() {
@@ -804,6 +1160,7 @@ async function startServer() {
     }
     await saveConfig(true);
     await post("/api/start", { lazy: value("startMode") === "lazy" });
+    state.pendingRestart = false;
     toast("服务启动中", "ok");
     await pollState();
   } catch (e) {
@@ -818,6 +1175,7 @@ async function restartServer() {
     }
     await saveConfig(true);
     await post("/api/restart", { lazy: value("startMode") === "lazy" });
+    state.pendingRestart = false;
     toast("服务重启中", "ok");
     await pollState();
   } catch (e) {
@@ -826,9 +1184,14 @@ async function restartServer() {
 }
 
 async function stopServer() {
-  if (!confirm("停止模型服务？这会释放显存。")) return;
+  const external = (state.live?.process?.state || "") === "external";
+  const msg = external
+    ? "停止外部模型服务？这会终止占用模型端口的 Strata 进程。"
+    : "停止模型服务？这会释放显存。";
+  if (!confirm(msg)) return;
   try {
     await post("/api/stop");
+    state.pendingRestart = false;
     toast("服务已停止", "ok");
     await pollState();
   } catch (e) {
@@ -856,7 +1219,7 @@ async function browse(kind, targetId, title) {
     const r = await post("/api/browse", { kind, title, current: value(targetId) });
     if (r.path) {
       setField(targetId, r.path);
-      markDirty();
+      markDirty(targetId);
     }
   } catch (e) { toast(`选择失败: ${e.message}`, "err", 6000); }
 }
@@ -903,7 +1266,7 @@ async function autoConfig() {
           if (suggested > 0) setField("contextInput", suggested);
           if (!["fp16", "int8", "q4_0", "k8v4"].includes(value("kvSelect"))) setField("kvSelect", "int8");
           if (!value("visionExe") || !value("visionMmproj")) $("visionCheck").checked = false;
-          markDirty();
+          markDirty("*");
           closeModal();
           toast("已应用推荐值，保存后生效", "ok");
         } },
@@ -989,18 +1352,36 @@ function bindEvents() {
       document.querySelectorAll(".st-tab").forEach((x) => x.setAttribute("aria-selected", x === tab ? "true" : "false"));
       document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + tab.dataset.tab));
       state.tab = tab.dataset.tab;
+      $("panels").classList.toggle("no-scroll", state.tab === "console");
       if (state.tab === "console") renderLogs();
       if (state.tab === "requests") pollState();
     });
   });
 
+  $("reqTabBody").addEventListener("click", (e) => {
+    const tr = e.target.closest("tr[data-req-key]");
+    if (!tr) return;
+    const key = tr.getAttribute("data-req-key") || "";
+    state.selectedRequestKey = key;
+    for (const row of $("reqTabBody").querySelectorAll("tr[data-req-key]"))
+      row.classList.toggle("selected", row === tr);
+    renderRequestDetail(state.requests.find((r) => requestKey(r) === key) || null);
+    $("requestDetail").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+
   const settings = $("settingsScroll");
+  const managedField = (el) => el.matches("input, select") && el.id !== "modelSelect" && el.id !== "dataDir" && !el.id.endsWith("Preset");
   settings.addEventListener("input", (e) => {
-    if (e.target.matches("input, select")) { markDirty(); }
+    if (managedField(e.target)) { markDirty(e.target.id); }
   });
   settings.addEventListener("change", (e) => {
-    if (e.target.matches("input, select")) { markDirty(); }
+    if (managedField(e.target)) { markDirty(e.target.id); }
   });
+  bindTokenPreset("kvResident", "kvResidentPreset");
+  bindTokenPreset("prefill", "prefillPreset");
+  bindTokenPreset("visionMaxTokens", "visionMaxTokensPreset");
+  bindTokenPreset("maxTokens", "maxTokensPreset");
+  bindTokenPreset("reasoningBudget", "reasoningBudgetPreset");
 
   $("configSelect").addEventListener("change", async () => {
     try {
@@ -1014,7 +1395,7 @@ function bindEvents() {
   $("contextPreset").addEventListener("change", () => {
     if ($("contextPreset").value) {
       setField("contextInput", $("contextPreset").value);
-      markDirty();
+      markDirty("contextInput");
     }
     $("contextPreset").value = "";
   });
@@ -1024,7 +1405,7 @@ function bindEvents() {
     setToggle("lanToggle", on);
     $("host").value = on ? "0.0.0.0" : "127.0.0.1";
     updateLanBadge(on);
-    markDirty();
+    markDirty("host");
   });
 
   bindToggle("autoRestart", (on) => {
@@ -1034,12 +1415,15 @@ function bindEvents() {
   bindToggle("lazyRestart");
   bindToggle("fitMaxTokens");
   bindToggle("mtpEnabled", (on) => {
+    const v = state.payload?.view || {};
     $("mtpPath").disabled = !on;
-    if (on && !value("mtpPath")) setField("mtpPath", state.payload?.view?.mtp_detected_path || "");
+    if (on && v.mtp_native && !value("spec")) setField("spec", "2");
+    if (on && !v.mtp_native && !value("mtpPath")) setField("mtpPath", v.mtp_detected_path || "");
     updateMtpHint();
     updateOptionalVisibility();
   });
   $("mtpPath").addEventListener("input", updateMtpHint);
+  $("spec").addEventListener("input", updateMtpHint);
   bindToggle("openBrowser");
   bindToggle("preventSleep");
   bindToggle("apiMonitor", (on) => {
@@ -1056,11 +1440,12 @@ function bindEvents() {
     $("visionExe").disabled = !$("visionCheck").checked;
     $("visionMmproj").disabled = !$("visionCheck").checked;
     $("visionMaxTokens").disabled = !$("visionCheck").checked;
+  $("visionMaxTokensPreset").disabled = !$("visionCheck").checked;
     $("visionThreads").disabled = !$("visionCheck").checked;
     updateVisionNote();
     updateVisionHint();
     updateOptionalVisibility();
-    markDirty();
+    markDirty("visionCheck");
   });
   $("visionDevice").addEventListener("change", () => { updateVisionNote(); updateVisionHint(true); });
   $("visionExe").addEventListener("input", () => { updateVisionNote(); updateVisionHint(); });
@@ -1083,7 +1468,7 @@ function bindEvents() {
     state.apiKeySet = true;
     $("keyState").textContent = "保存后生效（可先点“复制”）";
     updateCorsHint();
-    markDirty();
+    markDirty("apiKey");
   });
   $("copyKeyBtn").addEventListener("click", copyKey);
   $("clearKey").addEventListener("click", () => {
@@ -1092,15 +1477,29 @@ function bindEvents() {
     setField("apiKey", "");
     $("keyState").textContent = "保存后清除";
     updateCorsHint();
-    markDirty();
+    markDirty("apiKey");
   });
   $("corsOrigins").addEventListener("input", updateCorsHint);
 
   $("saveBtn").addEventListener("click", async () => {
-    try { await saveConfig(); await pollState(); }
-    catch (e) { toast(`保存失败: ${e.message}`, "err", 8000); }
+    try {
+      const raw = state.live?.process?.state || "stopped";
+      const needsRestart = ["running", "loading", "unloaded", "external"].includes(raw) && restartRequired();
+      await saveConfig();
+      if (needsRestart) {
+        state.pendingRestart = true;
+        updateButtons();
+        toast("配置已保存；点击“应用更改”重启后生效", "warn", 7000);
+      }
+      await pollState();
+    } catch (e) {
+      toast(`保存失败: ${e.message}`, "err", 8000);
+    }
   });
-  $("startBtn").addEventListener("click", startServer);
+  $("startBtn").addEventListener("click", () => {
+    if (state.dirty || state.pendingRestart) applyChanges();
+    else startServer();
+  });
   $("stopBtn").addEventListener("click", stopServer);
   $("restartBtn").addEventListener("click", restartServer);
   $("loadBtn").addEventListener("click", loadModel);
@@ -1120,8 +1519,13 @@ function bindEvents() {
     }
     window.open(`http://127.0.0.1:${activeModelPort()}/api-monitor`, "_blank", "noopener");
   });
-  $("browseNative").addEventListener("click", () => browse("file", "ggufPath", "选择 GGUF 首分片"));
-  $("browsePack").addEventListener("click", () => browse("folder", "packPath", "选择 Pack 目录"));
+  $("browseDataDir").addEventListener("click", async () => {
+    await browse("folder", "dataDir", "选择 Strata-data 目录");
+    await applyDataDir(value("dataDir"));
+  });
+  $("refreshModels").addEventListener("click", refreshModels);
+  $("modelSelect").addEventListener("change", () => selectModel(value("modelSelect")));
+  $("dataDir").addEventListener("change", () => applyDataDir(value("dataDir")));
   $("browseMtp").addEventListener("click", async () => {
     await browse("folder", "mtpPath", "选择 MTP runtime 目录");
     updateMtpHint();
@@ -1136,7 +1540,7 @@ function bindEvents() {
     const on = value("host") !== "127.0.0.1";
     setToggle("lanToggle", on);
     updateLanBadge(on);
-    markDirty();
+    markDirty("host");
   });
   $("openConfigBtn").addEventListener("click", () => openTarget("config"));
   $("openConfigBtn2").addEventListener("click", () => openTarget("config"));
@@ -1192,4 +1596,3 @@ async function boot() {
 }
 
 document.addEventListener("DOMContentLoaded", boot);
-

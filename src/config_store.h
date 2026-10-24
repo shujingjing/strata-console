@@ -11,10 +11,13 @@ public:
     bool init(std::string& err);
 
     json configs() const;
+    json models() const;
     json view() const;
     json launcher_public() const;
 
     bool select_config(const std::string& path, std::string& err);
+    bool select_model(const std::string& id, std::string& err);
+    bool set_data_dir(const std::string& path, std::string& err);
     bool apply(const json& form, std::string& err);
 
     bool start_preflight(std::string& err) const;
@@ -30,6 +33,7 @@ public:
     int ui_port() const;
     std::string log_path() const;
     std::string root() const;
+    std::string data_dir() const;
     std::string config_path() const;
     bool auto_restart() const;
     bool lazy_on_restart() const;
@@ -42,15 +46,21 @@ private:
     json cfg_ = json::object();
     std::string config_path_;
     std::string root_;
+    std::string data_dir_;
 
     json default_launcher() const;
     void load_launcher_locked();
     bool save_launcher_locked(std::string& err);
     std::string discover_root_locked() const;
     std::string discover_config_locked() const;
+    std::string discover_data_dir_locked() const;
     void load_config_locked();
     json view_locked() const;
     json configs_locked() const;
+    json models_locked() const;
+    bool has_native_mtp_locked() const;
+    bool select_model_locked(const std::string& id, std::string& err);
+    bool materialize_model_config_locked(json& model, std::string& err);
     json backups_locked() const;
     std::string backup_dir_locked() const;
     std::string shared_path_locked() const;

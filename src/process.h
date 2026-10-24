@@ -13,6 +13,7 @@ public:
     void start();
     void stop();
     void set_target(int port, const std::string& key, const std::string& log_path);
+    void set_history_path(const std::string& path);
 
     json state();
     std::string last_log();
@@ -20,6 +21,10 @@ public:
 
 private:
     void loop();
+    void load_history_locked();
+    bool merge_history_locked(const json& metrics);
+    void save_history_locked(bool force);
+    json history_totals_locked() const;
 
     std::mutex m_;
     std::atomic<bool> running_{true};
@@ -29,6 +34,9 @@ private:
     std::string log_path_;
     json health_ = json();
     json metrics_ = json();
+    std::string history_path_;
+    json history_ = json::array();
+    int64_t history_saved_ = 0;
     std::string error_;
     std::string last_log_;
     int64_t updated_ = 0;

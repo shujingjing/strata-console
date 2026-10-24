@@ -22,8 +22,7 @@ $src = @(
 ) -join '" "'
 $rc = Join-Path $root "resources\strata-console.rc"
 $res = Join-Path $build "strata-console.res"
-$cmd = "call `"$vs`" >nul && rc /nologo /fo `"$res`" /I `"$root\resources`" `"$rc`" && cl /nologo /std:c++17 /O2 /MT /EHsc /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /I `"$root\third_party`" /Fo`"$build\\`" `"$src`" `"$res`" /Fe`"$root\strata-console.exe`" /link /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup ws2_32.lib shell32.lib user32.lib advapi32.lib comdlg32.lib ole32.lib"
+$cmd = "call `"$vs`" >nul && rc /nologo /fo `"$res`" /I `"$root\resources`" `"$rc`" && cl /nologo /utf-8 /std:c++17 /O2 /MT /EHsc /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /I `"$root\third_party`" /Fo`"$build\\`" `"$src`" `"$res`" /Fe`"$root\strata-console.exe`" /link /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup ws2_32.lib shell32.lib user32.lib advapi32.lib comdlg32.lib ole32.lib iphlpapi.lib"
 cmd /c $cmd
 if ($LASTEXITCODE -ne 0) { throw "build failed: $LASTEXITCODE" }
 Write-Host "built: $root\strata-console.exe"
-

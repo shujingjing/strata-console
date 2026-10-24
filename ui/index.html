@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strata Console</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2310b981'/%3E%3Cpath d='M9 21c2.5 2 5.5 3 9 3 4 0 6-1.5 6-4 0-2.5-2-3.5-6-4.3-3.5-.7-5-1.5-5-3.2 0-1.6 1.6-2.5 4-2.5 2.2 0 4 .7 5.5 2' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="app.css?v=3">
-<script src="app.js?v=3" defer></script>
+<link rel="stylesheet" href="app.css?v=33">
+<script src="app.js?v=33" defer></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -16,6 +16,7 @@
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 9h8M8 12h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z" fill="currentColor"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></symbol>
+<symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.5 6.5a8 8 0 1 0 11 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -26,16 +27,28 @@
 
 <header class="st-header">
   <span class="st-header__brand">Strata <em>Console</em></span>
-  <span class="st-pill" id="statusPill" data-state="stopped"><span class="st-pill__dot"></span><span id="statusText">未启动</span><span class="muted" id="statusSub">127.0.0.1:8080</span></span>
+  <span class="st-pill" id="statusPill" data-state="stopped"><span class="st-pill__dot"></span><span id="statusText">未启动</span><span id="statusSub">127.0.0.1:8080</span></span>
   <span class="st-pill" data-state="idle" title="控制台端口"><span class="st-pill__dot"></span>控制台 <span id="consolePort">:8090</span></span>
   <span class="st-header__spacer"></span>
   <div class="header-actions">
-    <button class="st-btn st-btn--secondary st-btn--sm" id="loadBtn"><svg class="st-icon st-icon--sm"><use href="#i-play"/></svg>加载</button>
-    <button class="st-btn st-btn--secondary st-btn--sm" id="unloadBtn"><svg class="st-icon st-icon--sm"><use href="#i-stop"/></svg>卸载</button>
-    <button class="st-btn st-btn--secondary st-btn--sm" id="restartBtn"><svg class="st-icon st-icon--sm"><use href="#i-refresh"/></svg>重启</button>
-    <button class="st-btn st-btn--danger st-btn--sm" id="stopBtn">停止</button>
-    <button class="st-btn st-btn--primary st-btn--sm" id="openWebBtn"><svg class="st-icon st-icon--sm"><use href="#i-chat"/></svg>打开 Chat</button>
+    <div class="header-action-cluster">
+      <span class="header-action-group__label">模型</span>
+      <div class="header-action-group header-action-group--model" role="group" aria-label="模型操作" title="模型操作：加载 / 卸载">
+        <button class="st-btn st-btn--secondary st-btn--sm header-action-fixed" id="loadBtn" title="加载模型到显存（服务需已启动）"><svg class="st-icon st-icon--sm"><use href="#i-play"/></svg>加载</button>
+        <span class="header-action-divider" aria-hidden="true"></span>
+        <button class="st-btn st-btn--secondary st-btn--sm header-action-fixed" id="unloadBtn" title="从显存卸载模型，服务继续运行"><svg class="st-icon st-icon--sm"><use href="#i-stop"/></svg>卸载</button>
+      </div>
+    </div>
+    <div class="header-action-cluster">
+      <span class="header-action-group__label">服务</span>
+      <div class="header-action-group header-action-group--service" role="group" aria-label="服务操作" title="服务操作：重启 / 停止">
+        <button class="st-btn st-btn--secondary st-btn--sm header-action-fixed" id="restartBtn" title="重启模型服务"><svg class="st-icon st-icon--sm"><use href="#i-refresh"/></svg>重启</button>
+        <span class="header-action-divider" aria-hidden="true"></span>
+        <button class="st-btn st-btn--secondary st-btn--sm header-action-fixed" id="stopBtn" title="停止模型服务进程"><svg class="st-icon st-icon--sm"><use href="#i-power"/></svg>停止</button>
+      </div>
+    </div>
     <button class="st-btn st-btn--secondary st-btn--sm" id="quitConsoleBtn" title="退出控制台后台服务，不是关闭浏览器页面">退出控制台</button>
+    <button class="st-btn st-btn--primary st-btn--sm" id="openWebBtn"><svg class="st-icon st-icon--sm"><use href="#i-chat"/></svg>打开 Chat</button>
     <button class="st-btn st-btn--icon" id="themeBtn" title="浅色 / 深色" aria-label="切换主题"><svg class="st-icon"><use id="themeIcon" href="#i-moon"/></svg></button>
   </div>
 </header>
@@ -58,51 +71,60 @@
     <div class="settings-scroll" id="settingsScroll">
       <div class="settings-page active" id="page-basic">
         <div class="section">
-          <div class="section-title"><span>模型位置</span><span class="badge warn" id="pathState">自动读取</span></div>
+          <div class="section-title"><span>模型</span><span class="badge warn" id="pathState">自动读取</span></div>
           <div class="field top">
-            <span class="label">GGUF 首分片<span class="tip" data-tip="对应 --native。选择目录时会自动寻找 *-00001-of-*.gguf 或单个 .gguf。修改路径会提示兼容性风险。">?</span></span>
-            <div><div class="control-row"><input type="text" id="ggufPath"><button class="btn-icon" id="browseNative" title="浏览">…</button></div><div class="hint" id="nativeHint">从当前配置自动读取</div></div>
+            <span class="label">当前模型<span class="tip" data-tip="列出模型位置中已安装的模型。切换后会同步载入该模型的配置；运行中的服务需重启后生效。">?</span></span>
+            <div>
+              <div class="control-row"><select id="modelSelect"></select><button class="btn-icon" id="refreshModels" title="重新扫描模型">↻</button></div>
+              <div class="hint" id="modelHint">自动读取已安装模型</div>
+            </div>
           </div>
-          <div class="field"><span class="label">Pack 目录<span class="tip" data-tip="对应 --pack。必须与 GGUF 来自同一模型；更换模型请使用 setup 生成新 Pack。">?</span></span><div class="control-row"><input type="text" id="packPath"><button class="btn-icon" id="browsePack" title="浏览">…</button></div></div>
-          <button class="adv-toggle" data-target="advPaths"><span>高级路径：PLE / Tokenizer / 引擎 / 日志</span><span class="chev"><svg class="st-icon st-icon--sm"><use href="#i-chevron"/></svg></span></button>
-          <div class="adv-body" id="advPaths">
-            <div class="field"><span class="label">PLE GGUF</span><input type="text" id="plePath"></div>
-            <div class="field"><span class="label">Tokenizer</span><input type="text" id="tokenizerPath"></div>
-            <div class="field"><span class="label">引擎 exe</span><input type="text" id="exePath"></div>
-            <div class="field"><span class="label">Expert profile</span><input type="text" id="profilePath"></div>
-            <div class="field"><span class="label">引擎日志</span><input type="text" id="logPath"></div>
+          <div class="field top">
+            <span class="label">模型位置<span class="tip" data-tip="Strata-data 根目录。控制台从 packs、models、mtp 自动读取模型；GGUF 首分片、Pack 目录、Tokenizer 等路径会随模型切换自动更新。">?</span></span>
+            <div>
+              <div class="control-row"><input type="text" id="dataDir" spellcheck="false"><button class="btn-icon" id="browseDataDir" title="浏览">…</button></div>
+              <div class="hint" id="dataDirHint">自动读取 models、packs、mtp</div>
+            </div>
           </div>
+          <div class="model-summary" id="modelSummary"></div>
+          <input type="hidden" id="ggufPath">
+          <input type="hidden" id="packPath">
+          <input type="hidden" id="plePath">
+          <input type="hidden" id="tokenizerPath">
+          <input type="hidden" id="exePath">
+          <input type="hidden" id="profilePath">
+          <input type="hidden" id="logPath">
         </div>
         <div class="section">
           <div class="section-title"><span>启动选项</span></div>
-          <div class="switch-line"><div class="copy"><strong>中断后自动重启</strong><small>启动器监督服务；默认开启，可手动关闭</small></div><button class="st-toggle" id="autoRestart" aria-checked="true" aria-label="中断后自动重启"></button></div>
-          <div class="switch-line"><div class="copy"><strong>重启后不预加载模型</strong><small>仅自动重启时附加 --lazy，首个请求再加载</small></div><button class="st-toggle" id="lazyRestart" aria-checked="true" aria-label="重启后不预加载模型"></button></div>
-          <div class="switch-line"><div class="copy"><strong>启动模式</strong><small>普通启动默认预加载；可切换为延迟加载</small></div><select id="startMode" style="width:132px"><option value="preload">预加载</option><option value="lazy">延迟加载</option></select></div>
+          <div class="switch-line"><div class="copy"><strong>中断后自动重启<span class="tip" data-tip="启动器监督服务进程；默认开启。关闭后服务异常退出不会自动拉起。">?</span></strong><small>服务异常退出后自动拉起</small></div><button class="st-toggle" id="autoRestart" aria-checked="true" aria-label="中断后自动重启"></button></div>
+          <div class="switch-line"><div class="copy"><strong>重启后不预加载模型<span class="tip" data-tip="仅用于自动重启；附加 --lazy，首个请求到达时再加载模型。">?</span></strong><small>自动重启时延迟加载</small></div><button class="st-toggle" id="lazyRestart" aria-checked="true" aria-label="重启后不预加载模型"></button></div>
+          <div class="switch-line"><div class="copy"><strong>启动模式<span class="tip" data-tip="预加载：点击“启动服务”时同时加载模型。延迟加载：服务先启动，首个请求到达时再加载模型。">?</span></strong><small>预加载会随服务一起加载模型</small></div><select id="startMode" style="width:132px"><option value="preload">预加载</option><option value="lazy">延迟加载</option></select></div>
           <div class="field"><span class="label">空闲卸载<span class="tip" data-tip="空闲多少分钟后释放模型和显存。0 表示不卸载；下一次请求会重新加载。">?</span></span><div class="control-row"><input type="number" id="idleUnload" min="0" step="1"><span class="muted small">分钟</span></div></div>
-          <div class="switch-line"><div class="copy"><strong>就绪后打开 Chat</strong><small>默认关闭；也可随时点右上角“打开 Chat”</small></div><button class="st-toggle" id="openBrowser" aria-checked="false" aria-label="就绪后打开 Chat"></button></div>
-          <div class="switch-line"><div class="copy"><strong>保持系统唤醒</strong><small>运行期间阻止系统休眠，远程服务建议开启</small></div><button class="st-toggle" id="preventSleep" aria-checked="false" aria-label="保持系统唤醒"></button></div>
-          <div class="switch-line"><div class="copy"><strong>请求内容监视</strong><small>api_monitor：保留最近 100 条请求内容，会增加服务器内存</small></div><button class="st-toggle" id="apiMonitor" aria-checked="false" aria-label="请求内容监视"></button></div>
+          <div class="switch-line"><div class="copy"><strong>就绪后打开 Chat<span class="tip" data-tip="服务就绪后自动打开官方 Chat 页面；也可以随时点右上角“打开 Chat”。">?</span></strong><small>就绪后自动打开 Chat</small></div><button class="st-toggle" id="openBrowser" aria-checked="false" aria-label="就绪后打开 Chat"></button></div>
+          <div class="switch-line"><div class="copy"><strong>保持系统唤醒<span class="tip" data-tip="运行期间阻止系统休眠，远程或长时间任务建议开启。">?</span></strong><small>运行期间阻止系统休眠</small></div><button class="st-toggle" id="preventSleep" aria-checked="false" aria-label="保持系统唤醒"></button></div>
+          <div class="switch-line"><div class="copy"><strong>请求内容监视<span class="tip" data-tip="api_monitor 保留最近 100 条请求内容，会增加服务器内存占用。">?</span></strong><small>保留最近 100 条请求内容</small></div><button class="st-toggle" id="apiMonitor" aria-checked="false" aria-label="请求内容监视"></button></div>
         </div>
       </div>
 
       <div class="settings-page" id="page-infer">
         <div class="section">
           <div class="section-title"><span>上下文与KV</span><span class="badge info" id="contextHint">当前配置</span></div>
-          <div class="field"><span class="label">上下文长度<span class="tip" data-tip="模型一次能看到的 token 数。越长越占显存，GPU 能缓存的专家越少。">?</span></span><div class="control-row"><input type="number" id="contextInput" min="1024" step="1024"><select id="contextPreset" style="width:100px"><option value="">预设</option><option>32768</option><option>65536</option><option>131072</option><option>200704</option><option>262144</option></select></div></div>
+          <div class="field"><span class="label">上下文长度<span class="tip" data-tip="模型一次能看到的 token 数。越长越占显存，GPU 能缓存的专家越少。">?</span></span><div class="control-row"><input type="number" id="contextInput" min="1024" step="1024"><select id="contextPreset" style="width:100px"><option value="">预设</option><option value="32768">32K</option><option value="65536">64K</option><option value="131072">128K</option><option value="163840">160K</option><option value="200704">196K</option><option value="262144">256K</option></select></div></div>
           <div class="hint" id="contextNote">当前配置已读取</div>
           <div class="field"><span class="label">KV Cache量化<span class="tip" data-tip="对话记忆的存储精度。仅支持 fp16 / int8 / q4_0 / k8v4；Q5_1 是专家权重格式，不是 KV 选项。int8 是官方默认。">?</span></span><select id="kvSelect"><option value="int8">int8（官方默认）</option><option value="k8v4">k8v4（K 8-bit + V 4-bit）</option><option value="q4_0">q4_0（最省显存）</option><option value="fp16">fp16（最高精度）</option></select></div>
           <div class="hint">已实测：q5_0 / q5_1 / q8_0 会被引擎拒绝</div>
-          <div class="field"><span class="label">KV 驻留<span class="tip" data-tip="对应 --kv-resident，KV 流式驻留窗口，单位 tokens；留空关闭。">?</span></span><input type="text" id="kvResident" placeholder="关闭"></div>
-          <div class="field"><span class="label">Prefill 分块<span class="tip" data-tip="对应 --prefill，单位 tokens。auto 由引擎决定；固定值如 2048/4096/8192 可调预填速度与临时显存。">?</span></span><input type="text" id="prefill" placeholder="auto"></div>
+          <div class="field"><span class="label">KV 驻留<span class="tip" data-tip="对应 --kv-resident，KV 流式驻留窗口，单位 tokens；留空关闭。">?</span></span><div class="control-row"><input type="text" id="kvResident" placeholder="关闭"><select id="kvResidentPreset" style="width:100px"><option value="">预设</option><option value="8192">8K</option><option value="16384">16K</option><option value="32768">32K</option><option value="65536">64K</option><option value="98304">96K</option><option value="131072">128K</option></select></div></div>
+          <div class="field"><span class="label">Prefill 分块<span class="tip" data-tip="对应 --prefill，单位 tokens。auto 由引擎决定；固定值如 2048/4096/8192 可调预填速度与临时显存。">?</span></span><div class="control-row"><input type="text" id="prefill" placeholder="auto"><select id="prefillPreset" style="width:100px"><option value="">预设</option><option value="auto">auto</option><option value="2048">2K</option><option value="4096">4K</option><option value="8192">8K</option><option value="16384">16K</option><option value="32768">32K</option></select></div></div>
         </div>
 
         <div class="section">
           <div class="section-title"><span>推测解码</span><span class="badge plain">可选</span></div>
-          <div class="switch-line"><div class="copy"><strong>MTP 推测解码</strong><small>使用模型自带的 MTP 草稿层；关闭可释放约 0.7–1 GiB 显存</small></div><button class="st-toggle" id="mtpEnabled" aria-checked="false" aria-label="启用 MTP 推测解码"></button></div>
+          <div class="switch-line"><div class="copy"><strong>MTP 推测解码<span class="tip" data-tip="控制 --mtp：外部 MTP 模型使用独立草稿层，Qwen3.6 等自带草稿模型使用模型内 MTP。关闭只影响 MTP；提示词查找/后缀草稿仍可工作。">?</span></strong><small>控制外部草稿层或模型自带 MTP；关闭可释放显存</small></div><button class="st-toggle" id="mtpEnabled" aria-checked="false" aria-label="启用 MTP 推测解码"></button></div>
           <div class="optional-body" id="mtpOptions">
-            <div class="field"><span class="label">MTP 路径/数量<span class="tip" data-tip="路径模式填写 mtp 的 runtime 目录（需包含 experts.bin），例如 ...\\mtp\\rt；Qwen3.6 等自带 MTP 的模型也可以填草稿数，如 2。">?</span></span><div class="control-row"><input type="text" id="mtpPath" placeholder="...\\mtp\\rt 或 2"><button class="iconbtn" id="browseMtp" title="选择 MTP runtime 目录">…</button></div><div class="hint" id="mtpHint">MTP 未启用</div></div>
-            <div class="field"><span class="label">投机窗口<span class="tip" data-tip="对应 --spec，MTP 推测窗口，常用 4；越大不一定越快。">?</span></span><input type="text" id="spec" placeholder="4"></div>
-            <div class="field"><span class="label">投机阈值<span class="tip" data-tip="对应 --spec-min-p，推测接受阈值，常用 0.5。">?</span></span><input type="text" id="specMinP" placeholder="0.5"></div>
+            <div class="field" id="mtpPathField"><span class="label" id="mtpPathLabel">MTP 路径<span class="tip" data-tip="外部 MTP：填写 runtime 目录（需包含 experts.bin）。自带草稿的模型不需要路径，草稿数在下方设置。">?</span></span><div class="control-row" id="mtpControl"><input type="text" id="mtpPath" placeholder="...\\mtp\\rt"><button class="iconbtn" id="browseMtp" title="选择 MTP runtime 目录">…</button></div><div class="hint" id="mtpHint">MTP 未启用</div></div>
+            <div class="field"><span class="label" id="specLabel"><span id="specLabelText">投机窗口</span><span class="tip" id="specTip" data-tip="对应 --spec，MTP 推测窗口，常用 4；越大不一定越快。">?</span></span><input type="text" id="spec" placeholder="4"></div>
+            <div class="field" id="specMinPField"><span class="label">投机阈值<span class="tip" data-tip="对应 --spec-min-p，推测接受阈值，常用 0.5。">?</span></span><input type="text" id="specMinP" placeholder="0.5"></div>
           </div>
         </div>
 
@@ -113,14 +135,14 @@
             <div class="field"><span class="label">图片运行位置<span class="tip" data-tip="CPU：不占显存，每张图可能慢几秒；GPU：更快，但会占用约 1 GB 以上显存。">?</span></span><select id="visionDevice"><option value="cpu">CPU（省显存）</option><option value="gpu">GPU（更快）</option></select><div class="hint" id="visionDeviceHint">CPU 编码不占显存；改用 GPU 需要重新编译 CUDA 版编码器。</div></div>
             <div class="field"><span class="label">视觉 exe</span><input type="text" id="visionExe" placeholder="strata-vision.exe"></div>
             <div class="field"><span class="label">视觉 mmproj</span><input type="text" id="visionMmproj" placeholder="mmproj-*.gguf"></div>
-            <div class="field"><span class="label">视觉最大 tokens<span class="tip" data-tip="每张图片最多编码成多少 token。越大细节越多，CPU 编码越慢；默认 768。">?</span></span><input type="number" id="visionMaxTokens" min="64" max="4096" step="64"></div>
+            <div class="field"><span class="label">视觉最大 tokens<span class="tip" data-tip="每张图片最多编码成多少 token。越大细节越多，CPU 编码越慢；默认 768。">?</span></span><div class="control-row"><input type="number" id="visionMaxTokens" min="64" max="4096" step="64"><select id="visionMaxTokensPreset" style="width:100px"><option value="">预设</option><option value="256">256</option><option value="512">512</option><option value="768">768</option><option value="1024">1K</option><option value="2048">2K</option></select></div></div>
             <div class="field"><span class="label">视觉线程数<span class="tip" data-tip="CPU 编码器使用的线程数。默认 8；CPU 核心/线程较多时可提高。">?</span></span><input type="number" id="visionThreads" min="1" max="128" step="1"></div>
           </div>
         </div>
 
         <div class="section">
           <div class="section-title"><span>显存与内存</span></div>
-          <div class="field"><span class="label">GPU</span><input type="text" id="gpu" placeholder="0 或 0,2"></div>
+          <div class="field"><span class="label">GPU</span><input type="text" id="gpu" placeholder="0 或 0,2"><div class="hint" id="gpuRolesHint"></div></div>
           <div class="field"><span class="label">低内存模式<span class="tip" data-tip="mmap：专家从 SSD 读取；resident：专家复制到 RAM。RAM 不足时 mmap 更稳。">?</span></span><select id="lowRam"><option value="off">关闭</option><option value="mmap">mmap</option><option value="resident">resident</option></select></div>
           <div class="field"><span class="label">VRAM 保留<span class="tip" data-tip="对应 --vram-reserve-mib，为桌面/其他程序保留的显存 MiB；默认 1024，0 表示不额外保留。">?</span></span><input type="number" id="vramReserve" min="0"><span class="hint">默认 1024 MiB，降低显存不足导致的崩溃风险</span></div>
           <div class="field"><span class="label">Expert Cache<span class="tip" data-tip="对应 --expert-cache，显存中驻留的专家数量（slots/blobs）。auto 会按剩余显存自动调整；固定值不会自动缩小。">?</span></span><input type="text" id="expertCache" placeholder="auto"></div>
@@ -132,8 +154,11 @@
           <div class="field"><span class="label">Temperature<span class="tip" data-tip="0 = 贪心；数值越高越发散。范围 0–2。留空使用模型卡默认。">?</span></span><input type="number" id="temperature" min="0" max="2" step="0.05" placeholder="模型默认"></div>
           <div class="field"><span class="label">Top P<span class="tip" data-tip="核采样阈值，范围 0–1。留空使用模型卡默认。">?</span></span><input type="number" id="topP" min="0" max="1" step="0.01" placeholder="模型默认"></div>
           <div class="field"><span class="label">Top K<span class="tip" data-tip="每步保留的候选数，范围 1–64。留空使用模型卡默认。">?</span></span><input type="number" id="topK" min="1" max="64" step="1" placeholder="模型默认"></div>
+          <div class="field"><span class="label">存在惩罚<span class="tip" data-tip="presence_penalty：对已经出现过的 token 施加惩罚，减少重复。范围 0–4，0 为关闭；量化模型重复明显时可尝试 1.0–1.5。留空使用模型默认。">?</span></span><input type="number" id="presencePenalty" min="0" max="4" step="0.05" placeholder="模型默认"></div>
+          <div class="field"><span class="label">重复惩罚<span class="tip" data-tip="repetition_penalty：对最近 token 的重复进行惩罚，1 为关闭。常见范围 1.05–1.2；过高会让输出变得生硬。留空使用模型默认。">?</span></span><input type="number" id="repetitionPenalty" min="0.01" max="4" step="0.01" placeholder="1 = 关闭"></div>
           <div class="field"><span class="label">Seed<span class="tip" data-tip="正整数，用于可复现采样；留空表示随机。">?</span></span><input type="number" id="seed" min="1" step="1" placeholder="留空（随机）"></div>
-          <div class="field"><span class="label">Max Tokens<span class="tip" data-tip="默认输出上限，写入 Strata Chat 的 shared settings，仅对未指定 max_tokens 的客户端生效；请求显式发送 max_tokens 时以请求为准。留空表示不设默认。">?</span></span><input type="number" id="maxTokens" min="1" step="1" placeholder="留空=不设默认"></div>
+          <div class="field"><span class="label">Max Tokens<span class="tip" data-tip="默认输出上限，写入 Strata Chat 的 shared settings，仅对未指定 max_tokens 的客户端生效；请求显式发送 max_tokens 时以请求为准。不限 = 不设置默认输出上限，实际生成长度仍受上下文和 Fit Max Tokens 限制。">?</span></span><div class="control-row"><input type="number" id="maxTokens" min="1" step="1" placeholder="留空=不设默认"><select id="maxTokensPreset" style="width:100px"><option value="">预设</option><option value="__clear__">不限</option><option value="2048">2K</option><option value="4096">4K</option><option value="8192">8K</option><option value="16384">16K</option><option value="32768">32K</option><option value="65536">64K</option></select></div></div>
+          <div class="field"><span class="label">Reasoning Budget<span class="tip" data-tip="对应 reasoning_budget_tokens：思考阶段最多使用的 token 数，0 表示不限制。思考预算计入输出 tokens；请求自身指定时以请求为准。留空表示不设置默认。">?</span></span><div class="control-row"><input type="number" id="reasoningBudget" min="0" max="1000000" step="1" placeholder="留空=不设默认"><select id="reasoningBudgetPreset" style="width:100px"><option value="">预设</option><option value="0">不限</option><option value="2048">2K</option><option value="4096">4K</option><option value="8192">8K</option><option value="16384">16K</option><option value="32768">32K</option><option value="65536">64K</option></select></div></div>
           <div class="switch-line" style="padding-top:2px"><div class="copy"><strong>Fit Max Tokens</strong><small>prompt + max_tokens 超出上下文时自动缩短输出，而不是返回 400；推荐开启，重启后生效</small></div><button class="st-toggle" id="fitMaxTokens" aria-checked="false" aria-label="Fit Max Tokens"></button></div>
           <div class="hint">这些是运行配置的默认值；外部调用在请求中指定 temperature / top_p / top_k / seed / reasoning_effort 时，以请求值为准。</div>
         </div>
@@ -199,9 +224,10 @@
           <div class="button-grid"><button class="st-btn st-btn--secondary st-btn--sm" id="commandBtn">查看启动命令</button><button class="st-btn st-btn--secondary st-btn--sm" id="openConfigBtn2">打开配置</button></div>
         </div>
       </div>
+    </div>
     <div class="settings-foot">
       <button class="st-btn st-btn--secondary" id="saveBtn">保存配置</button>
-      <button class="st-btn st-btn--primary" id="startBtn">启动</button>
+      <button class="st-btn st-btn--primary" id="startBtn" title="启动模型服务；启动模式为预加载时会同时加载模型，延迟加载则在首个请求时加载">启动服务</button>
     </div>
   </aside>
 
@@ -216,7 +242,7 @@
       <button class="st-tab" role="tab" aria-selected="false" data-tab="requests"><svg class="st-icon st-icon--sm"><use href="#i-list"/></svg>请求<span class="count" id="reqCount">0</span></button>
     </div></div>
 
-    <div class="panels">
+    <div class="panels" id="panels">
       <div class="panel active" id="panel-monitor">
         <div class="summary">
           <div class="st-card"><div class="muted small">服务</div><div class="value" id="serviceState">未启动</div><div class="sub" id="serviceSub">—</div></div>
@@ -239,16 +265,9 @@
           <div class="metric"><div class="name">PCIe</div><div class="value" id="mPcie">—</div><div class="sub" id="mPcieSub">—</div><div class="bar"><i id="mPcieBar" style="width:0%"></i></div></div>
         </div>
         <div class="monitor-row">
-          <div class="st-card ctx-card">
-            <div class="req-head"><span class="card-title">上下文</span><span class="muted small" id="gaugeSub">—</span></div>
-            <div class="ctx-gauge"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--st-surface-2)" stroke-width="10" stroke-linecap="round" stroke-dasharray="235.6 314.2" transform="rotate(135 60 60)"/><circle id="ctxGauge" cx="60" cy="60" r="50" fill="none" stroke="var(--st-accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 314.2" transform="rotate(135 60 60)"/></svg><div class="ctx-gauge__label"><span class="ctx-gauge__pct" id="ctxPct">0%</span><span>已用</span></div></div>
-            <div class="bar-row"><span>显存中的专家</span><span class="muted" id="expertsText">—</span></div><div class="st-progress"><div class="st-progress__bar" id="expertsBar" style="width:0%"></div></div>
-            <div class="bar-row"><span>系统 RAM</span><span class="muted" id="ramText">—</span></div><div class="st-progress"><div class="st-progress__bar" id="ramBar" style="width:0%"></div></div>
-            <div class="bar-row"><span>GPU 温度</span><span class="muted" id="tempText">—</span></div><div class="st-progress" data-tone="warn"><div class="st-progress__bar" id="tempBar" style="width:0%"></div></div>
-          </div>
           <div class="st-card req-card">
             <div class="req-head"><span class="card-title">最近请求</span><span class="muted small" id="reqSummary">—</span></div>
-            <div class="table-wrap"><table class="st-table"><thead><tr><th>时间</th><th>状态</th><th class="num">Prompt</th><th class="num">复用</th><th class="num">输出</th><th class="num">预填 t/s</th><th class="num">解码 t/s</th><th class="num">命中</th><th class="num">耗时</th></tr></thead><tbody id="reqBody"><tr><td colspan="9" class="muted">暂无请求</td></tr></tbody></table></div>
+            <div class="table-wrap"><table class="st-table"><thead><tr><th>时间</th><th>模型</th><th>状态</th><th class="num">Prompt</th><th class="num" title="提示词/对话缓存复用的 token 数">复用</th><th class="num">输出</th><th class="num">预填 t/s</th><th class="num">解码 t/s</th><th class="num" title="显存中的专家缓存命中率">专家命中</th><th class="num" title="草稿接受率：accepted / offered">草稿接受</th><th class="num">耗时</th></tr></thead><tbody id="reqBody"><tr><td colspan="11" class="muted">暂无请求</td></tr></tbody></table></div>
             <div class="footer-note"><span id="reqTotals"></span><span id="stateUpdated"></span></div>
           </div>
         </div>
@@ -263,9 +282,9 @@
       </div>
 
       <div class="panel" id="panel-requests">
-        <div class="notice info"><strong>请求详情是可选功能。</strong> 控制台 v1 只显示 /metrics 元数据。启用 <span class="mono">api_monitor</span> 后，可在官方 /api-monitor 页面查看最近 100 条请求的提示词和回答；会增加服务器内存占用。</div>
+        <div class="notice info"><strong>请求元数据会跨会话保存。</strong> 控制台保存最近 500 条请求的耗时、吞吐、专家命中率等元数据，重启后仍可对比。启用 <span class="mono">api_monitor</span> 后，可在官方 /api-monitor 页面查看请求内容；会增加服务器内存占用。</div>
         <div class="requests-layout">
-          <div><div class="req-head" style="margin-bottom:8px"><span class="card-title">请求列表</span><span class="muted small" id="reqTabSummary">—</span></div><div class="table-wrap"><table class="st-table"><thead><tr><th>时间</th><th>端点</th><th>状态</th><th class="num">Prompt</th><th class="num">输出</th><th class="num">耗时</th></tr></thead><tbody id="reqTabBody"><tr><td colspan="6" class="muted">暂无请求</td></tr></tbody></table></div></div>
+          <div><div class="req-head" style="margin-bottom:8px"><span class="card-title">请求列表</span><span class="muted small" id="reqTabSummary">—</span></div><div class="table-wrap req-list-scroll"><table class="st-table"><thead><tr><th>时间</th><th>模型</th><th>端点</th><th>状态</th><th class="num">Prompt</th><th class="num">输出</th><th class="num" title="草稿接受率：accepted / offered">草稿接受</th><th class="num">耗时</th></tr></thead><tbody id="reqTabBody"><tr><td colspan="8" class="muted">暂无请求</td></tr></tbody></table></div></div>
           <div class="detail" id="requestDetail"><div class="empty"><b>选择一条请求</b><br><br>默认只有元数据。<br>启用 api_monitor 后可查看输入、输出与推理内容。</div></div>
         </div>
         <div class="req-head" style="margin-top:14px"><span class="card-title">api_monitor</span><span class="badge plain" id="apiMonitorState">默认关闭</span></div>

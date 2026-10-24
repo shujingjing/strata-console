@@ -15,7 +15,7 @@
 
 namespace {
 
-constexpr const char* kVersion = "0.1.1";
+constexpr const char* kVersion = "0.1.3";
 
 struct App {
     std::string app_dir;
@@ -32,7 +32,9 @@ struct App {
         : app_dir(std::move(dir)),
           ui_dir(app_dir + "\\ui"),
           config(app_dir),
-          process(config, status) {}
+          process(config, status) {
+        status.set_history_path(app_dir + "\\strata-console-history.json");
+    }
 };
 
 void send_json(httplib::Response& res, int code, const json& j) {
@@ -95,6 +97,8 @@ json parse_body(const httplib::Request& req, httplib::Response& res, bool& ok) {
 
 json config_payload(App& app) {
     return json{{"configs", app.config.configs()},
+                {"models", app.config.models()},
+                {"data_dir", app.config.data_dir()},
                 {"active", app.config.config_path()},
                 {"view", app.config.view()},
                 {"backups", app.config.backups()},
@@ -293,6 +297,38 @@ int main(int argc, char** argv) {
         if (!ok) return;
         std::string err;
         if (!app.config.select_config(body.value("path", ""), err)) {
+            send_error(res, 400, err);
+            return;
+        }
+        send_json(res, 200, config_payload(app));
+    });
+
+    svr.Get("/api/models", [&](const httplib::Request& req, httplib::Response& res) {
+        if (!host_ok(req)) { send_error(res, 403, "只接受本机 Host"); return; }
+        send_json(res, 200, json{{"data_dir", app.config.data_dir()},
+                                 {"models", app.config.models()}});
+    });
+
+    svr.Post("/api/models/select", [&](const httplib::Request& req, httplib::Response& res) {
+        if (!validate_post(req, res) || !check_csrf(req, res, app.csrf)) return;
+        bool ok = false;
+        json body = parse_body(req, res, ok);
+        if (!ok) return;
+        std::string err;
+        if (!app.config.select_model(body.value("id", ""), err)) {
+            send_error(res, 400, err);
+            return;
+        }
+        send_json(res, 200, config_payload(app));
+    });
+
+    svr.Post("/api/data-dir", [&](const httplib::Request& req, httplib::Response& res) {
+        if (!validate_post(req, res) || !check_csrf(req, res, app.csrf)) return;
+        bool ok = false;
+        json body = parse_body(req, res, ok);
+        if (!ok) return;
+        std::string err;
+        if (!app.config.set_data_dir(body.value("path", ""), err)) {
             send_error(res, 400, err);
             return;
         }

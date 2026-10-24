@@ -9,6 +9,7 @@ build/
 strata-console.exe
 strata-console.json
 strata-console-server.log
+strata-console-history.json
 design-notes/
 dist/
 .kilo/

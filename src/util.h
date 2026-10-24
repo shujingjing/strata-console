@@ -138,10 +138,14 @@ inline std::optional<json> read_json(const std::string& p, std::string& err) {
     try {
         std::ifstream f(path(p), std::ios::binary);
         if (!f) { err = "cannot open " + p; return std::nullopt; }
-        json j;
-        f >> j;
-        if (!f.good() && !f.eof()) { err = "invalid JSON in " + p; return std::nullopt; }
-        return j;
+        std::string text((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        if (text.size() >= 3 &&
+            (unsigned char)text[0] == 0xEF &&
+            (unsigned char)text[1] == 0xBB &&
+            (unsigned char)text[2] == 0xBF) {
+            text.erase(0, 3);
+        }
+        return json::parse(text);
     } catch (const std::exception& e) {
         err = e.what();
         return std::nullopt;
