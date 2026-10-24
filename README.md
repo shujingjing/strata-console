@@ -6,7 +6,7 @@
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C)
 ![License](https://img.shields.io/badge/license-MIT-10b981)
 
-**下载：** [Latest Release](https://github.com/shujingjing/strata-console/releases/latest)
+**下载：** [Latest Release](https://github.com/PatenX-AI/strata-console/releases/latest)
 
 ![Strata Console 监控界面](docs/screenshots/monitor.png)
 
@@ -88,7 +88,7 @@ Strata 的启动参数很多，手动改 JSON、找日志、查显存状态容�
 
 ### 运行
 
-1. 从 [Releases](https://github.com/shujingjing/strata-console/releases/latest) 下载 `strata-console-v*-win64.zip`。
+1. 从 [Releases](https://github.com/PatenX-AI/strata-console/releases/latest) 下载 `strata-console-v*-win64.zip`。
 2. 解压到任意目录。
 3. 双击 `strata-console.exe`。
 4. 浏览器打开：
